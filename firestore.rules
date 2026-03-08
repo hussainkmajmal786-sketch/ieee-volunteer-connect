@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow anyone to read events and Leaderboard (users collection)
+    match /events/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null; // Admin
+    }
+    
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null; 
+    }
+    
+    match /tasks/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
