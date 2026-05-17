@@ -1,16 +1,149 @@
-# React + Vite
+# IEEE Volunteer Connect
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A volunteer management platform for IEEE student branches — events, tasks, points, leaderboards, and admin tooling in one place.
 
-Currently, two official plugins are available:
+**Live:** [ieee-volunteer-connect.vercel.app](https://ieee-volunteer-connect.vercel.app) · [ieee-vc-cek-main.web.app](https://ieee-vc-cek-main.web.app)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Events** — Public event listing with categories, search, real-time updates, registration with duplicate detection, countdown timers, and per-event analytics.
+- **Volunteer dashboard** — Personal task list, points display, referral link generation with click tracking, auto-completion when referral targets are hit, and badge progression.
+- **Admin dashboard** — Full CRUD over events, volunteers, tasks, teams, and rewards. Live analytics, link-tracking panel, image uploads with cropping (Cloudinary), participant analytics, and registration management.
+- **Leaderboard** — Public rankings by points with grade tiers and badge display.
+- **Auth** — Email/password, Google OAuth, password reset. Role-based access (`STUDENT` → `VOLUNTEER` → `ADMIN` → `SUPER_ADMIN`).
+- **PWA** — Installable, offline page, service worker.
+- **Notifications** — Real-time bell with unread state.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Tech stack
+
+| Layer | Tooling |
+|---|---|
+| Frontend | React 19 · Vite 7 · React Router 7 |
+| Styling | Tailwind CSS 3 · custom design system (glassmorphism, IEEE blue) |
+| Motion | framer-motion 12 |
+| Backend | Firebase Firestore · Firebase Auth |
+| File uploads | Cloudinary |
+| Forms / validation | zod |
+| Hosting | Vercel (primary) · Firebase Hosting (mirror) |
+| Analytics | Google Analytics 4 |
+
+---
+
+## Getting started
+
+```bash
+# 1. Install
+npm install
+
+# 2. Configure environment
+cp .env.example .env.local
+# Fill in your Firebase + Cloudinary keys
+
+# 3. Run dev server
+npm run dev
+```
+
+App runs at `http://localhost:5173`.
+
+---
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start Vite dev server with HMR |
+| `npm run build` | Production build → `build/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint` | ESLint over the project |
+| `npm run test:rules` | Run Firestore rules unit tests (requires Java + Firebase emulator) |
+
+---
+
+## Environment variables
+
+Required in `.env.local`:
+
+```
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_CLOUDINARY_CLOUD_NAME=
+VITE_CLOUDINARY_UPLOAD_PRESET=
+```
+
+See `.env.example` for the template.
+
+---
+
+## Project structure
+
+```
+src/
+├── App.jsx                 # Router + lazy routes
+├── main.jsx                # React entrypoint
+├── pages/                  # 8 top-level pages
+│   ├── LandingPage.jsx     # Hero3D, live events, animated counters
+│   ├── AuthPage.jsx        # Login / register / reset
+│   ├── EventsPage.jsx
+│   ├── EventDetailPage.jsx
+│   ├── VolunteerDashboard.jsx
+│   ├── AdminDashboard.jsx  # CRUD + analytics
+│   ├── LeaderboardPage.jsx
+│   └── NotFoundPage.jsx
+├── components/             # Shared UI
+│   ├── admin/              # Admin widgets + modals
+│   └── Hero3D, Navbar, Footer, Toast, ...
+├── context/                # AuthContext, ToastContext
+├── services/               # eventService, authService, adminService, trackingService
+├── hooks/                  # useAuth, useTheme, useToast, useTracking
+├── shared/                 # MetaTags, OptimizedImage, Skeleton
+├── utils/                  # constants, validation, analytics, cloudinaryUpload, ...
+└── firebase/config.js      # Firebase SDK initialization
+```
+
+---
+
+## Security model
+
+Firestore rules (`firestore.rules`) enforce role-based access:
+
+- **Events** — public read · admin write
+- **Users** — authenticated read · self-signup constrained to `role: STUDENT`, `points: 0`, `approvalStatus: PENDING` (no privilege escalation) · self-update cannot grant ADMIN/SUPER_ADMIN
+- **Tasks / Teams / Rewards / Claims** — admin write · authenticated read
+- **linkClicks** — public create (anonymous tracking) · admin read · immutable
+- **Default** — deny
+
+Rules are covered by unit tests in `tests/firestore.rules.test.js`.
+
+---
+
+## Deployment
+
+### Vercel (primary)
+
+```bash
+vercel deploy --prod
+```
+
+Configured via `vercel.json` — SPA rewrites, security headers, immutable cache for static assets.
+
+### Firebase Hosting + rules
+
+```bash
+firebase deploy --only hosting,firestore
+```
+
+GitHub Actions workflow (`.github/workflows/deploy.yml`) auto-deploys to Firebase Hosting on push to `main`.
+
+---
+
+## License
+
+Internal project. All rights reserved.
