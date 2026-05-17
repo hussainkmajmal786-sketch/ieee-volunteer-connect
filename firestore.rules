@@ -1,22 +1,155 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Allow anyone to read events and Leaderboard (users collection)
-    match /events/{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null; // Admin
+
+    // ─── HELPER FUNCTIONS ────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
     }
-    
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email == 'hussainkmajmal786@gmail.com' &&
+        getUserData().role in ['SUPER_ADMIN', 'ADMIN'];
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        getUserData().role in ['ADMIN', 'SUPER_ADMIN'];
+    }
+
+    function isVolunteer() {
+      return isSignedIn() &&
+        getUserData().role == 'VOLUNTEER';
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Validate string field length
+    function isValidString(field, maxLen) {
+      return field is string && field.size() > 0 && field.size() <= maxLen;
+    }
+
+    // ─── EVENTS COLLECTION ───────────────────────────────────
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isAdmin()
+        && isValidString(request.resource.data.name, 200)
+        && isValidString(request.resource.data.venue, 200);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+
+      // Event registrations subcollection
+      match /registrations/{regId} {
+        allow read: if isAdmin() || isVolunteer();
+        allow create: if isSignedIn()
+          && isValidString(request.resource.data.name, 100)
+          && isValidString(request.resource.data.email, 200);
+        allow update, delete: if isAdmin();
+      }
+
+      // Event notifications subcollection
+      match /notifications/{notifId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // ─── USERS COLLECTION ────────────────────────────────────
     match /users/{userId} {
-      allow read: if true;
-      allow write: if request.auth != null; 
+      allow read: if isSignedIn();
+
+      // Self-signup: role MUST be 'STUDENT', points MUST be 0, status MUST be 'PENDING'.
+      // Privilege elevation only via admin path below.
+      allow create: if (isSignedIn() && isOwner(userId)
+          && isValidString(request.resource.data.name, 100)
+          && request.resource.data.role == 'STUDENT'
+          && request.resource.data.points == 0
+          && request.resource.data.approvalStatus == 'PENDING')
+        || isAdmin();
+
+      // Self-update: blocks self-promotion to ADMIN/SUPER_ADMIN. Allows the
+      // existing STUDENT→VOLUNTEER finalize flow and PENDING→ACTIVE status
+      // change. Points may change (task completion uses increment()).
+      // Admin: full update.
+      allow update: if isAdmin()
+        || (isOwner(userId)
+            && (
+              request.resource.data.role == resource.data.role
+              || (resource.data.role == 'STUDENT' && request.resource.data.role == 'VOLUNTEER')
+            )
+            && (
+              request.resource.data.approvalStatus == resource.data.approvalStatus
+              || (resource.data.approvalStatus == 'PENDING' && request.resource.data.approvalStatus == 'ACTIVE')
+            ));
+
+      // Only Super Admin can delete users
+      allow delete: if isSuperAdmin();
     }
-    
-    match /tasks/{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+
+    // ─── TASKS COLLECTION ────────────────────────────────────
+    match /tasks/{taskId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin()
+        && isValidString(request.resource.data.title, 200)
+        && request.resource.data.points is int
+        && request.resource.data.points > 0
+        && request.resource.data.points <= 10000;
+      allow update: if isAdmin() || isVolunteer();
+      allow delete: if isAdmin();
+    }
+
+    // ─── TEAMS COLLECTION ────────────────────────────────────
+    match /teams/{teamId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin()
+        && isValidString(request.resource.data.name, 100);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ─── REWARDS COLLECTION ──────────────────────────────────
+    match /rewards/{rewardId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin()
+        && isValidString(request.resource.data.name, 200)
+        && request.resource.data.points is int
+        && request.resource.data.points > 0;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ─── CLAIMS COLLECTION ───────────────────────────────────
+    match /claims/{claimId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // ─── NOTIFICATIONS (read-only for users) ─────────────────
+    match /notifications/{notifId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── LINK CLICK TRACKING ─────────────────────────────────
+    // Anyone (including unauthenticated visitors) can write a click event.
+    // Only admins can read the analytics.
+    match /linkClicks/{clickId} {
+      allow create: if true;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ─── DENY ALL OTHER COLLECTIONS BY DEFAULT ───────────────
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
