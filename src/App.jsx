@@ -1,8 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
 import AppLayout from "./layouts/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ScrollToTop from "./components/ScrollToTop";
 import { useAuth } from "./context/AuthContext";
+import { initGA, logPageView } from "./utils/analytics";
+import { ROLES } from "./utils/constants";
 
 // Lazy loaded pages for performance
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -12,29 +15,59 @@ const VolunteerDashboard = lazy(() => import("./pages/VolunteerDashboard"));
 const EventsPage = lazy(() => import("./pages/EventsPage"));
 const EventDetailPage = lazy(() => import("./pages/EventDetailPage"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 function PageLoader() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-ieee-blue border-t-transparent rounded-full animate-spin" />
+        <div className="relative">
+          <div className="w-12 h-12 border-4 border-ieee-blue/20 rounded-full" />
+          <div className="absolute inset-0 w-12 h-12 border-4 border-ieee-blue border-t-transparent rounded-full animate-spin" />
+        </div>
         <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Loading...</p>
       </div>
     </div>
   );
 }
 
-// Smart wrapper to route to correct dashboard based on role
+/**
+ * Global component to track page views on route changes with GA4
+ */
+function AnalyticsTracker() {
+  const location = useLocation();
+  
+  useEffect(() => {
+    // GA4 Initialization
+    const gaId = import.meta.env.VITE_GA_ID || "G-XXXXXXXXXX";
+    initGA(gaId);
+  }, []);
+
+  useEffect(() => {
+    logPageView(location.pathname + location.search);
+  }, [location]);
+
+  return null;
+}
+
+// Smart wrapper — redirects to correct dashboard based on role
 function DashboardRouter() {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/auth" />;
-  if (user.role === 'ADMIN') return <AdminDashboard />;
-  return <VolunteerDashboard />;
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-ieee-blue border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+  if (!user) return <Navigate to="/auth" replace />;
+  if (user.role === ROLES.SUPER_ADMIN || user.role === ROLES.ADMIN) return <Navigate to="/admin" replace />;
+  return <Navigate to="/volunteer" replace />;
 }
 
 function App() {
   return (
     <Router>
+      <ScrollToTop />
+      <AnalyticsTracker />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<AppLayout />}>
@@ -46,13 +79,13 @@ function App() {
 
             {/* Protected Routes */}
             <Route path="admin" element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
+              <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                 <AdminDashboard />
               </ProtectedRoute>
             } />
 
             <Route path="volunteer" element={
-              <ProtectedRoute allowedRoles={['VOLUNTEER', 'STUDENT']}>
+              <ProtectedRoute allowedRoles={[ROLES.VOLUNTEER, ROLES.STUDENT]}>
                 <VolunteerDashboard />
               </ProtectedRoute>
             } />
@@ -63,6 +96,9 @@ function App() {
                 <DashboardRouter />
               </ProtectedRoute>
             } />
+
+            {/* 404 Catch-all Route */}
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
       </Suspense>
