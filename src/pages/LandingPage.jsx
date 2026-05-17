@@ -97,7 +97,7 @@ export default function LandingPage() {
                 description="The volunteer connect platform of IEEE Student Branch, College of Engineering Kidangoor. Manage events, track contributions, and grow together."
             />
             {/* ===== HERO SECTION ===== */}
-            <section className="w-full relative min-h-[92vh] flex items-center justify-center overflow-hidden">
+            <section className="w-full relative min-h-[80vh] lg:min-h-[92vh] flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-ieee-light via-white to-gray-50 dark:from-ieee-dark dark:via-gray-900 dark:to-gray-950 -z-20" />
                 <motion.div style={{ y: heroYSpring, scale: heroScale }} className="absolute inset-0 overflow-hidden opacity-30 dark:opacity-20 -z-10">
                     <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-ieee-blue/30 rounded-full mix-blend-multiply filter blur-[100px] animate-blob" />
@@ -105,33 +105,33 @@ export default function LandingPage() {
                     <div className="absolute bottom-1/4 left-1/2 w-[450px] h-[450px] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-[100px] animate-blob" style={{ animationDelay: '4s' }} />
                 </motion.div>
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 w-full">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-28 w-full">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
                         <motion.div style={{ y: heroYSpring }} initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, ease: "easeOut" }}>
                             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-ieee-blue/10 text-ieee-blue dark:bg-cyan-900/30 dark:text-cyan-400 font-semibold text-sm mb-6 border border-ieee-blue/20">
                                 <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                                 IEEE Student Branch • CEK
                             </div>
-                            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-8 leading-[1.08]">
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 sm:mb-8 leading-[1.08] break-words">
                                 Welcome to<br />
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-ieee-blue via-cyan-500 to-blue-400">IEEE VC CEK</span>
                             </h1>
-                            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-10 leading-relaxed max-w-xl">
+                            <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8 sm:mb-10 leading-relaxed max-w-xl">
                                 The volunteer connect platform of <strong>IEEE Student Branch, College of Engineering Kidangoor</strong>. Manage events, track contributions, and grow together.
                             </p>
-                            <div className="flex flex-col sm:flex-row gap-4 mb-12">
-                                <Link to={dashPath}>
+                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-10 sm:mb-12">
+                                <Link to={dashPath} className="w-full sm:w-auto">
                                     <Button className="px-8 py-4 text-lg w-full sm:w-auto shadow-lg shadow-ieee-blue/20 hover:shadow-xl hover:scale-[1.02] transition-all">
                                         {user ? "Go to Dashboard" : "Join Now"} <ArrowRight className="ml-2 w-5 h-5" />
                                     </Button>
                                 </Link>
-                                <Link to="/events">
+                                <Link to="/events" className="w-full sm:w-auto">
                                     <Button variant="outline" className="px-8 py-4 text-lg w-full sm:w-auto">
                                         Explore Events
                                     </Button>
                                 </Link>
                             </div>
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                                 {features.map((f, i) => (
                                     <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.1 }} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
                                         <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
@@ -258,9 +258,9 @@ export default function LandingPage() {
             </section>
 
             {/* ===== ANIMATED STATS ===== */}
-            <section className="w-full relative z-10 -mt-16 mb-24">
+            <section className="w-full relative z-10 -mt-8 md:-mt-16 mb-16 md:mb-24">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 lg:p-12 shadow-2xl border border-gray-100 dark:border-gray-800">
+                    <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 lg:p-12 shadow-2xl border border-gray-100 dark:border-gray-800">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-800 text-center" style={{ perspective: "800px" }}>
                             {stats.map((s, idx) => {
                                 const Icon = s.icon;
