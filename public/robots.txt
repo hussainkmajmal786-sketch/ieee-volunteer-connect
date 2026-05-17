@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /volunteer-dashboard
+
+Sitemap: https://ieee-volunteer-connect.web.app/sitemap.xml

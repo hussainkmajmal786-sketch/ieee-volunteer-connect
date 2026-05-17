@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, X, Info, AlertTriangle } from "lucide-react";
-
-const ToastContext = createContext();
+import { ToastContext } from "../context/ToastContext";
 
 const ICONS = {
     success: CheckCircle,
@@ -18,9 +17,6 @@ const COLORS = {
     error: "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300",
 };
 
-export function useToast() {
-    return useContext(ToastContext);
-}
 
 export function ToastProvider({ children }) {
     const [toasts, setToasts] = useState([]);

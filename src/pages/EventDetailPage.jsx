@@ -1,13 +1,15 @@
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import Card from "../components/Card";
 import Button from "../components/Button";
-import { useToast } from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 import { db } from "../firebase/config";
-import { doc, getDoc, collection, addDoc, query, where, getDocs, updateDoc, increment, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { doc, collection, addDoc, query, where, getDocs, updateDoc, increment, onSnapshot, orderBy, limit } from "firebase/firestore";
+import MetaTags from "../shared/MetaTags";
+import { trackingService } from "../services/trackingService";
 
 // Countdown Timer Component
 function CountdownTimer({ targetDate }) {
@@ -85,6 +87,8 @@ function CountdownTimer({ targetDate }) {
 
 export default function EventDetailPage() {
     const { id } = useParams();
+    const location = useLocation();
+    const referredBy = new URLSearchParams(location.search).get('ref') || null;
     const addToast = useToast();
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -96,11 +100,22 @@ export default function EventDetailPage() {
     const [notifications, setNotifications] = useState([]);
     const [dismissedNotifs, setDismissedNotifs] = useState(new Set());
 
+    // Track page view + referral visit on mount
+    useEffect(() => {
+        trackingService.track('page_view', { eventId: id });
+        if (referredBy) {
+            trackingService.track('referral_visit', { eventId: id, refId: referredBy });
+        }
+    }, [id, referredBy]);
+
     // Fetch event data from Firestore (real-time for countdown/notification updates)
     useEffect(() => {
         const unsubscribe = onSnapshot(doc(db, "events", id), (docSnap) => {
             if (docSnap.exists()) {
-                setEvent({ id: docSnap.id, ...docSnap.data() });
+                const data = { id: docSnap.id, ...docSnap.data() };
+                setEvent(data);
+                // Back-fill eventName on the already-fired page_view via a follow-up track
+                trackingService.track('page_view', { eventId: id, eventName: data.name });
             }
             setLoading(false);
         });
@@ -128,6 +143,7 @@ export default function EventDetailPage() {
     }, [id]);
 
     const handleCopyLink = async () => {
+        trackingService.track('share_click', { element: 'copy_link', eventId: id, eventName: event?.name });
         try {
             await navigator.clipboard.writeText(window.location.href);
             setCopied(true);
@@ -147,17 +163,20 @@ export default function EventDetailPage() {
     };
 
     const handleShareWhatsApp = () => {
+        trackingService.track('share_click', { element: 'whatsapp', eventId: id, eventName: event?.name });
         const text = `Check out this IEEE event: ${event?.name} — ${window.location.href}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
     const handleShareTwitter = () => {
+        trackingService.track('share_click', { element: 'twitter', eventId: id, eventName: event?.name });
         const text = `I'm attending "${event?.name}" by IEEE! Join me 🚀`;
         window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`, '_blank');
     };
 
     const handleRegister = async (e) => {
         e.preventDefault();
+        trackingService.track('register_click', { element: 'register_submit', eventId: id, eventName: event?.name });
         setSubmitting(true);
         try {
             const dupQuery = query(collection(db, "events", id, "registrations"), where("email", "==", form.email));
@@ -172,10 +191,14 @@ export default function EventDetailPage() {
                 ...form,
                 registeredAt: new Date(),
                 eventId: id,
+                ...(referredBy ? { referredBy } : {}),
             });
 
             const eventRef = doc(db, "events", id);
-            await updateDoc(eventRef, { participants: increment(1) });
+            await updateDoc(eventRef, {
+                participants: increment(1),
+                ...(referredBy ? { [`refCounts.${referredBy}`]: increment(1) } : {}),
+            });
 
             setRegistered(true);
             addToast('Successfully registered! 🎉', 'success');
@@ -203,7 +226,7 @@ export default function EventDetailPage() {
         return (
             <div className="max-w-4xl mx-auto px-4 py-20 text-center">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Event Not Found</h2>
-                <p className="text-gray-500 mb-6">This event may have been removed or doesn't exist.</p>
+                <p className="text-gray-500 mb-6">This event may have been removed or doesn&apos;t exist.</p>
                 <Link to="/events"><Button>Browse Events</Button></Link>
             </div>
         );
@@ -213,6 +236,11 @@ export default function EventDetailPage() {
 
     return (
         <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
+            <MetaTags 
+                title={event.name} 
+                description={event.desc || `Join us for ${event.name} at ${event.venue} on ${event.date}. Register now on IEEE Volunteer Connect.`}
+                image={event.imageUrl}
+            />
             {/* Back link */}
             <Link to="/events" className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-ieee-blue dark:hover:text-cyan-400 transition mb-6">
                 <ArrowLeft className="w-4 h-4" /> Back to Events
@@ -347,7 +375,7 @@ export default function EventDetailPage() {
                                         <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
                                             <CheckCircle className="w-8 h-8 text-green-500" />
                                         </div>
-                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">You're Registered!</h3>
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">You&apos;re Registered!</h3>
                                         <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">We look forward to seeing you at <span className="font-semibold text-gray-700 dark:text-gray-300">{event.name}</span>.</p>
                                         <p className="text-xs text-gray-400">Share this event with your friends!</p>
                                         <button onClick={handleCopyLink} className="mt-4 flex items-center justify-center gap-2 mx-auto px-6 py-2 rounded-xl text-sm font-semibold bg-ieee-blue/10 text-ieee-blue hover:bg-ieee-blue hover:text-white transition">

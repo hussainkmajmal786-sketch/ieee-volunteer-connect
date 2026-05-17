@@ -1,15 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Calendar, MapPin, Users, Search, Copy, Check, Share2, Image } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Calendar, MapPin, Users, Search, Copy, Check, Share2, Image, ArrowUpDown } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import { useToast } from "../components/Toast";
+import { useToast } from "../hooks/useToast";
+import MetaTags from "../shared/MetaTags";
 
 export default function EventsPage() {
     const addToast = useToast();
-    const [activeTab, setActiveTab] = useState('All');
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [activeTab, setActiveTab] = useState(searchParams.get("cat") || "All");
+    const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+    const [sortBy, setSortBy] = useState(searchParams.get("sort") || "newest");
     const [allEvents, setAllEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [copiedId, setCopiedId] = useState(null);
@@ -25,13 +28,40 @@ export default function EventsPage() {
         return unsubscribe;
     }, []);
 
-    const categories = ['All', 'Workshop', 'Competition', 'Seminar', 'Hackathon', 'Meetup'];
+    // Keep URL params in sync with filter state (shareable links!)
+    useEffect(() => {
+        const next = {};
+        if (searchQuery) next.q = searchQuery;
+        if (activeTab && activeTab !== "All") next.cat = activeTab;
+        if (sortBy && sortBy !== "newest") next.sort = sortBy;
+        setSearchParams(next, { replace: true });
+    }, [searchQuery, activeTab, sortBy, setSearchParams]);
 
-    const filteredEvents = allEvents.filter(e => {
-        const matchesTab = activeTab === 'All' || e.category === activeTab;
-        const matchesSearch = e.name?.toLowerCase().includes(searchQuery.toLowerCase()) || e.desc?.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesTab && matchesSearch;
-    });
+    const categories = ["All", "Workshop", "Competition", "Seminar", "Hackathon", "Meetup"];
+
+    const filteredEvents = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        const base = allEvents.filter((e) => {
+            const matchesTab = activeTab === "All" || e.category === activeTab;
+            const matchesSearch =
+                !q ||
+                e.name?.toLowerCase().includes(q) ||
+                e.desc?.toLowerCase().includes(q) ||
+                e.venue?.toLowerCase().includes(q);
+            return matchesTab && matchesSearch;
+        });
+        const parseDate = (e) => {
+            const d = e.date ? new Date(e.date) : null;
+            return d && !isNaN(d.getTime()) ? d.getTime() : 0;
+        };
+        const sorters = {
+            newest: (a, b) => parseDate(b) - parseDate(a),
+            oldest: (a, b) => parseDate(a) - parseDate(b),
+            popular: (a, b) => (b.participants || 0) - (a.participants || 0),
+            name: (a, b) => (a.name || "").localeCompare(b.name || ""),
+        };
+        return [...base].sort(sorters[sortBy] || sorters.newest);
+    }, [allEvents, activeTab, searchQuery, sortBy]);
 
     const copyEventLink = async (e, eventId, eventName) => {
         e.preventDefault();
@@ -62,6 +92,10 @@ export default function EventsPage() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8 min-h-[calc(100vh-theme(spacing.20))]">
+            <MetaTags 
+                title="Upcoming Events" 
+                description="Explore workshops, hackathons, and seminars hosted by IEEE Student Branch CEK. Register now and enhance your skills."
+            />
             <div className="text-center mb-12 max-w-2xl mx-auto">
                 <p className="text-ieee-blue dark:text-cyan-400 font-bold text-sm uppercase tracking-widest mb-3">Browse & Register</p>
                 <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">Upcoming Events</h1>
@@ -69,14 +103,47 @@ export default function EventsPage() {
             </div>
 
             {/* Search + Filters */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <div className="relative flex-grow">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input type="text" placeholder="Search events..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none transition" />
+            <div className="flex flex-col gap-4 mb-8">
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="relative flex-grow">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                            type="search"
+                            placeholder="Search events, venues, descriptions…"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            aria-label="Search events"
+                            className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none transition"
+                        />
+                    </div>
+                    <div className="relative sm:w-52">
+                        <ArrowUpDown className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            aria-label="Sort events"
+                            className="w-full appearance-none pl-10 pr-4 py-3.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-ieee-blue outline-none transition font-semibold text-sm"
+                        >
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="popular">Most popular</option>
+                            <option value="name">By name (A–Z)</option>
+                        </select>
+                    </div>
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
+                <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide" role="tablist" aria-label="Event categories">
                     {categories.map((cat) => (
-                        <button key={cat} onClick={() => setActiveTab(cat)} className={`px-5 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === cat ? 'bg-ieee-blue text-white shadow-lg' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-ieee-blue/30'}`}>
+                        <button
+                            key={cat}
+                            onClick={() => setActiveTab(cat)}
+                            role="tab"
+                            aria-selected={activeTab === cat}
+                            className={`px-5 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+                                activeTab === cat
+                                    ? 'bg-ieee-blue text-white shadow-lg'
+                                    : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-ieee-blue/30'
+                            }`}
+                        >
                             {cat}
                         </button>
                     ))}
@@ -147,7 +214,7 @@ export default function EventsPage() {
             {!loading && filteredEvents.length === 0 && (
                 <div className="text-center py-20 bg-gray-50 dark:bg-gray-900/50 rounded-3xl border border-gray-100 dark:border-gray-800">
                     <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">No events match your search criteria.</p>
-                    <button onClick={() => { setSearchQuery(''); setActiveTab('All'); }} className="text-ieee-blue font-bold mt-3 hover:underline">Clear filters</button>
+                    <button onClick={() => { setSearchQuery(''); setActiveTab('All'); setSortBy('newest'); }} className="text-ieee-blue font-bold mt-3 hover:underline">Clear filters</button>
                 </div>
             )}
         </div>

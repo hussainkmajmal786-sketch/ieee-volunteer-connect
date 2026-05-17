@@ -1,0 +1,48 @@
+{
+    "name": "IEEE Volunteer Connect | CEK",
+    "short_name": "IEEE VC",
+    "description": "Official Volunteer Connect platform of IEEE Student Branch CEK — events, leaderboard, and rewards.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "theme_color": "#00629B",
+    "background_color": "#ffffff",
+    "lang": "en",
+    "dir": "ltr",
+    "categories": ["education", "productivity", "social"],
+    "icons": [
+        {
+            "src": "/favicon.svg",
+            "sizes": "64x64 32x32 24x24 16x16",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "/favicon.svg",
+            "type": "image/svg+xml",
+            "sizes": "192x192 512x512",
+            "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Events",
+            "short_name": "Events",
+            "description": "Browse upcoming IEEE events",
+            "url": "/events"
+        },
+        {
+            "name": "Leaderboard",
+            "short_name": "Leaderboard",
+            "description": "See the top volunteers",
+            "url": "/leaderboard"
+        },
+        {
+            "name": "My Dashboard",
+            "short_name": "Dashboard",
+            "description": "Open your volunteer dashboard",
+            "url": "/dashboard"
+        }
+    ],
+    "prefer_related_applications": false
+}

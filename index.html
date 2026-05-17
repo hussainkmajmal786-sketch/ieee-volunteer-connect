@@ -1,19 +1,82 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <!-- Google Fonts: Inter and Outfit -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <title>IEEE Volunteer Connect</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Favicon & PWA -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#00629B" />
+
+  <!-- Primary Meta Tags -->
+  <title>IEEE Volunteer Connect | CEK</title>
+  <meta name="title" content="IEEE Volunteer Connect | CEK" />
+  <meta name="description" content="Official Volunteer Connect platform of IEEE Student Branch, College of Engineering Kidangoor. Manage events, track volunteer engagement, and reward contributions." />
+  <meta name="keywords" content="IEEE, Volunteer, Connect, CEK, College of Engineering Kidangoor, Student Branch, Event Management" />
+  <meta name="author" content="IEEE SB CEK" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://ieee-vc-cek.web.app/" />
+  <meta property="og:title" content="IEEE Volunteer Connect | CEK" />
+  <meta property="og:description" content="Gamified volunteer management for IEEE Student Branch CEK. Track events, earn points, climb the leaderboard." />
+  <meta property="og:image" content="/favicon.svg" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://ieee-vc-cek.web.app/" />
+  <meta property="twitter:title" content="IEEE Volunteer Connect | CEK" />
+  <meta property="twitter:description" content="Gamified volunteer management for IEEE Student Branch CEK." />
+  <meta property="twitter:image" content="/favicon.svg" />
+
+  <!-- Preconnect to critical origins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://firestore.googleapis.com" />
+  <link rel="preconnect" href="https://firebaseinstallations.googleapis.com" />
+  <link rel="dns-prefetch" href="https://apis.google.com" />
+
+  <!-- Google Fonts: Inter and Outfit with font-display swap -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+
+  <!-- Anti-FOUC theme bootstrap: apply theme before first paint -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = (stored === 'light' || stored === 'dark') ? stored : (prefersDark ? 'dark' : 'light');
+        document.documentElement.classList.add(theme);
+        document.documentElement.style.colorScheme = theme;
+      } catch (e) { /* localStorage blocked — no-op */ }
+    })();
+  </script>
+</head>
+
+<body>
+  <!-- No-JS fallback -->
+  <noscript>
+    <div style="padding:2rem;text-align:center;font-family:sans-serif">
+      <h1 style="color:#00629B">IEEE Volunteer Connect</h1>
+      <p>Please enable JavaScript to use this application.</p>
+    </div>
+  </noscript>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+  <!-- Register the PWA service worker (only in production builds) -->
+  <script>
+    if ('serviceWorker' in navigator && location.hostname !== 'localhost') {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () { /* silent */ });
+      });
+    }
+  </script>
+</body>
+
 </html>

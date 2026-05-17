@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { ROLES } from "../utils/constants";
 
 export default function ProtectedRoute({ children, allowedRoles }) {
     const { user, loading } = useAuth();
@@ -15,6 +16,11 @@ export default function ProtectedRoute({ children, allowedRoles }) {
 
     if (!user) {
         return <Navigate to="/auth" state={{ from: location }} replace />;
+    }
+
+    // SUPER_ADMIN always has access to everything
+    if (user.role === ROLES.SUPER_ADMIN) {
+        return children;
     }
 
     if (allowedRoles && !allowedRoles.includes(user.role)) {

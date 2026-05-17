@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { Award, Share2, CheckCircle, Clock, Calendar, ChevronRight, Copy, Check, Users, Sparkles, Target } from "lucide-react";
+import { Award, Share2, CheckCircle, Clock, Calendar, ChevronRight, Copy, Check, Users, Sparkles, Target, ExternalLink, ShieldCheck, UserPlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase/config";
-import { doc, updateDoc, collection, query, onSnapshot, arrayUnion } from "firebase/firestore";
+import { doc, updateDoc, collection, query, onSnapshot, arrayUnion, increment } from "firebase/firestore";
 import Button from "../components/Button";
-import { useToast } from "../components/Toast";
-import { getGrade, getNextGrade, getGradeProgress, getEarnedBadges, getLockedBadges, BADGES } from "../utils/grades";
+import { useToast } from "../hooks/useToast";
+import { getGrade, getNextGrade, getGradeProgress, getEarnedBadges, BADGES } from "../utils/grades";
 
 export default function VolunteerDashboard() {
     const { user } = useAuth();
@@ -21,14 +21,22 @@ export default function VolunteerDashboard() {
     const [displayPoints, setDisplayPoints] = useState(0);
     const autoCompletedRef = useRef(new Set());
 
-    // Fetch User's Tasks
+    // Fetch User's Tasks — only show tasks assigned to this volunteer or to 'all'
     useEffect(() => {
         if (!user) return;
         const q = query(collection(db, "tasks"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const tasksData = [];
             snapshot.forEach((doc) => tasksData.push({ id: doc.id, ...doc.data() }));
-            setTasks(tasksData.map(t => ({ ...t, status: t.completedBy?.includes(user.uid) ? 'completed' : 'pending' })));
+            // Filter: show task only if assignedTo is 'all', undefined (legacy), or includes this volunteer's UID
+            const myTasks = tasksData
+                .filter(t => {
+                    if (!t.assignedTo || t.assignedTo === 'all') return true;
+                    if (Array.isArray(t.assignedTo)) return t.assignedTo.includes(user.uid);
+                    return false;
+                })
+                .map(t => ({ ...t, status: t.completedBy?.includes(user.uid) ? 'completed' : 'pending' }));
+            setTasks(myTasks);
         });
         return unsubscribe;
     }, [user]);
@@ -44,7 +52,7 @@ export default function VolunteerDashboard() {
         return unsubscribe;
     }, []);
 
-    // Auto-complete tasks when event target is met
+    // Auto-complete tasks when volunteer's referral count meets task target
     useEffect(() => {
         if (!user || tasks.length === 0 || events.length === 0) return;
 
@@ -57,8 +65,9 @@ export default function VolunteerDashboard() {
             const linkedEvent = events.find(e => e.id === task.eventId);
             if (!linkedEvent) return;
 
-            const currentProgress = linkedEvent.participants || 0;
-            const targetMet = currentProgress >= task.target;
+            // Use only THIS volunteer's referral count
+            const myRefCount = linkedEvent.refCounts?.[user.uid] || 0;
+            const targetMet = myRefCount >= task.target;
 
             if (targetMet) {
                 autoCompletedRef.current.add(task.id);
@@ -67,18 +76,18 @@ export default function VolunteerDashboard() {
                     const taskRef = doc(db, "tasks", task.id);
                     await updateDoc(taskRef, { completedBy: arrayUnion(user.uid) });
 
-                    // Award points
+                    // Award points using increment() to prevent race conditions
                     const userRef = doc(db, "users", user.uid);
-                    await updateDoc(userRef, { points: (user.points || 0) + task.points });
+                    await updateDoc(userRef, { points: increment(task.points), tasksCompleted: increment(1) });
 
-                    addToast(`🎯 Target reached! "${task.title}" auto-completed! +${task.points} pts`, 'success');
+                    addToast(`🎯 Referral target reached! "${task.title}" auto-completed! +${task.points} pts`, 'success');
                 } catch (error) {
                     console.error("Error auto-completing task:", error);
                     autoCompletedRef.current.delete(task.id);
                 }
             }
         });
-    }, [tasks, events, user]);
+    }, [tasks, events, user, addToast]);
 
     // Live points animation
     const totalPoints = user?.points || 0;
@@ -90,7 +99,7 @@ export default function VolunteerDashboard() {
             setTimeout(() => setShowPointsAnim(false), 2000);
         }
         setPrevPoints(totalPoints);
-    }, [totalPoints]);
+    }, [totalPoints, prevPoints]);
 
     // Animated counter for points display
     useEffect(() => {
@@ -112,19 +121,19 @@ export default function VolunteerDashboard() {
             setDisplayPoints(Math.round(current));
         }, 30);
         return () => clearInterval(timer);
-    }, [totalPoints]);
+    }, [totalPoints, displayPoints]);
 
     const grade = getGrade(totalPoints);
     const nextGrade = getNextGrade(totalPoints);
     const progress = getGradeProgress(totalPoints);
     const earnedBadges = getEarnedBadges(user || {});
-    const lockedBadges = getLockedBadges(user || {});
 
     const completeTask = async (taskId, points) => {
         if (!user) return;
+        // Only allow completing tasks that have no referral target
         try {
             const userRef = doc(db, "users", user.uid);
-            await updateDoc(userRef, { points: totalPoints + points });
+            await updateDoc(userRef, { points: increment(points), tasksCompleted: increment(1) });
             const taskRef = doc(db, "tasks", taskId);
             await updateDoc(taskRef, { completedBy: arrayUnion(user.uid) });
             addToast(`+${points} points earned! 🎉`, 'success');
@@ -135,7 +144,8 @@ export default function VolunteerDashboard() {
     };
 
     const copyLink = async (eventId, eventName) => {
-        const url = `${window.location.origin}/event/${eventId}`;
+        // Generate a personal referral link with the volunteer's UID
+        const url = `${window.location.origin}/event/${eventId}?ref=${user.uid}`;
         try {
             await navigator.clipboard.writeText(url);
         } catch {
@@ -147,20 +157,122 @@ export default function VolunteerDashboard() {
             document.body.removeChild(textarea);
         }
         setCopiedLink(eventId);
-        addToast(`Link copied for "${eventName}"`, 'success');
+        addToast(`Personal referral link copied for "${eventName}" 🔗`, 'success');
         setTimeout(() => setCopiedLink(null), 2000);
     };
 
-    // Helper: get task progress from linked event
+    const handleFinalizeVolunteer = async () => {
+        if (!user) return;
+        try {
+            const userRef = doc(db, "users", user.uid);
+            await updateDoc(userRef, { 
+                role: "VOLUNTEER",
+                approvalStatus: "ACTIVE"
+            });
+            addToast("Welcome to the team! You are now an official Volunteer. 🎉", "success");
+        } catch (error) {
+            console.error("Error finalizing volunteer status", error);
+            addToast("Failed to finalize status. Please contact an admin.", "error");
+        }
+    };
+
+    // Helper: get task progress from volunteer's personal referral count
     const getTaskProgress = (task) => {
         if (!task.eventId || !task.target) return { current: 0, target: 1, pct: 0, met: false };
         const linkedEvent = events.find(e => e.id === task.eventId);
-        const current = linkedEvent?.participants || 0;
+        // Only count registrations that came through THIS volunteer's referral link
+        const current = linkedEvent?.refCounts?.[user.uid] || 0;
         const target = task.target || 1;
         return { current, target, pct: Math.min(100, Math.round((current / target) * 100)), met: current >= target };
     };
 
     if (!user) return null;
+
+    // Phase 1: Application Pending
+    if (user.approvalStatus === 'PENDING') {
+        return (
+            <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+                <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-10 md:p-16 border border-gray-100 dark:border-gray-800 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl -z-10" />
+                    <div className="w-24 h-24 bg-amber-50 dark:bg-amber-900/20 rounded-3xl flex items-center justify-center mx-auto mb-8 animate-pulse shadow-inner">
+                        <Clock className="w-12 h-12 text-amber-500" />
+                    </div>
+                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-4">Application Under Review</h1>
+                    <p className="text-gray-600 dark:text-gray-400 text-lg max-w-xl mx-auto leading-relaxed mb-6">
+                        Thanks for your interest, <span className="font-bold text-ieee-blue dark:text-cyan-400">{user.name}</span>! Your application is currently awaiting review.
+                    </p>
+
+                    {/* Admin portal notice */}
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-5 max-w-lg mx-auto mb-8 text-left">
+                        <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 bg-amber-100 dark:bg-amber-900/40 rounded-xl flex items-center justify-center shrink-0">
+                                <UserPlus className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-1">Approval Pending in Admin Portal</p>
+                                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                                    Your registration has been submitted and is visible to the branch admin in the <span className="font-bold">Admin Portal → Volunteers</span> section. An admin will review and approve your application shortly.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-lg mx-auto">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 text-left">
+                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block mb-1">Status</span>
+                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Pending Approval</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 text-left">
+                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block mb-1">Reviewed By</span>
+                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Branch Admin</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 text-left">
+                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block mb-1">Next Step</span>
+                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Wait for Email</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Phase 2: Approved, Pending Form
+    if (user.approvalStatus === 'APPROVED_PENDING_FORM') {
+        return (
+            <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+                <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-10 md:p-16 border border-gray-100 dark:border-gray-800 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -z-10" />
+                    <div className="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner">
+                        <ShieldCheck className="w-12 h-12 text-ieee-blue" />
+                    </div>
+                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-4">Application Approved!</h1>
+                    <p className="text-gray-600 dark:text-gray-400 text-lg max-w-xl mx-auto leading-relaxed mb-10">
+                        Great news! Your application is approved. To complete your onboarding and become an official volunteer, please fill out the membership form below.
+                    </p>
+                    
+                    <div className="space-y-4 max-w-md mx-auto">
+                        <a 
+                            href="https://forms.gle/AUuo3HYnwZN6uBCa6" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="btn-primary w-full py-4 text-lg shadow-xl hover:shadow-2xl transition-all"
+                        >
+                            Complete Membership Form <ExternalLink className="w-5 h-5 ml-2" />
+                        </a>
+                        <Button 
+                            onClick={handleFinalizeVolunteer}
+                            className="btn-outline w-full py-4 text-lg"
+                        >
+                            I&apos;ve Completed the Form <CheckCircle className="w-5 h-5 ml-2" />
+                        </Button>
+                        <p className="text-xs text-gray-400 mt-4 italic">
+                            *Clicking &quot;Finalize&quot; will grant you full access to the task dashboard.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8 min-h-[calc(100vh-theme(spacing.20))]">
@@ -244,24 +356,36 @@ export default function VolunteerDashboard() {
                         <div className="space-y-3">
                             {tasks.map((task, i) => {
                                 const tp = getTaskProgress(task);
+                                const linkedEvent = events.find(e => e.id === task.eventId);
                                 return (
                                     <motion.div key={task.id} initial={{ opacity: 0, x: -15 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}>
                                         <div className={`bg-white dark:bg-gray-900 rounded-2xl p-5 border transition-all ${task.status === 'completed' ? 'border-green-200/50 dark:border-green-900/30 opacity-70 hover:opacity-100' : 'border-gray-100 dark:border-gray-800 border-l-4 border-l-ieee-blue'}`}>
-                                            <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                                                <div className="flex-1 w-full">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                                                {/* Event Thumbnail */}
+                                                <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hidden sm:block">
+                                                    {linkedEvent?.imageUrl ? (
+                                                        <img src={linkedEvent.imageUrl} alt="" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex flex-col items-center justify-center text-ieee-blue/40 bg-ieee-blue/5">
+                                                            <Calendar className="w-6 h-6 mb-1" />
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0 w-full">
                                                     <div className="flex items-center gap-2 mb-1.5">
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><Calendar className="w-3 h-3" /> {task.date || 'Anytime'}</span>
                                                         <span className="text-gray-300 dark:text-gray-600">•</span>
-                                                        <span className="text-[10px] font-bold text-ieee-blue dark:text-cyan-400 uppercase tracking-wider">{task.event || 'General'}</span>
+                                                        <span className="text-[10px] font-bold text-ieee-blue dark:text-cyan-400 uppercase tracking-wider truncate">{task.event || 'General'}</span>
                                                     </div>
-                                                    <h3 className={`font-bold text-gray-900 dark:text-white ${task.status === 'completed' ? 'line-through decoration-green-400 text-gray-500' : ''}`}>{task.title}</h3>
+                                                    <h3 className={`font-bold text-gray-900 dark:text-white text-base leading-snug ${task.status === 'completed' ? 'line-through decoration-green-400 text-gray-500' : ''}`}>{task.title}</h3>
 
-                                                    {/* Target progress bar */}
+                                                    {/* Target progress bar — referral-based */}
                                                     {task.target && task.eventId && (
                                                         <div className="mt-3 mb-2">
                                                             <div className="flex justify-between items-center mb-1">
                                                                 <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1">
-                                                                    <Target className="w-3 h-3" /> Target: {tp.current}/{tp.target} {task.targetType || 'registrations'}
+                                                                    <Target className="w-3 h-3" /> Your referrals: {tp.current}/{tp.target} {task.targetType || 'registrations'}
                                                                 </span>
                                                                 <span className={`text-[10px] font-black ${tp.met ? 'text-green-500' : 'text-ieee-blue'}`}>
                                                                     {tp.pct}%
@@ -277,8 +401,13 @@ export default function VolunteerDashboard() {
                                                             </div>
                                                             {tp.met && task.status !== 'completed' && (
                                                                 <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="text-[10px] text-green-600 dark:text-green-400 font-bold mt-1 flex items-center gap-1">
-                                                                    <Sparkles className="w-3 h-3" /> Target reached! Auto-completing...
+                                                                    <Sparkles className="w-3 h-3" /> Referral target reached! Auto-completing...
                                                                 </motion.p>
+                                                            )}
+                                                            {!tp.met && task.status !== 'completed' && (
+                                                                <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                                                                    🔗 Share your referral link to get registrations via your link
+                                                                </p>
                                                             )}
                                                         </div>
                                                     )}
@@ -292,7 +421,8 @@ export default function VolunteerDashboard() {
                                                         )}
                                                     </div>
                                                 </div>
-                                                {task.status !== 'completed' && user.role !== 'STUDENT' && !tp.met && (
+                                                {/* Show Complete button: always for non-target tasks, only after target met for target tasks */}
+                                                {task.status !== 'completed' && (!task.target || tp.met) && (
                                                     <Button onClick={() => completeTask(task.id, task.points)} className="shrink-0 text-sm px-4 py-2 group">
                                                         Complete <ChevronRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-0.5 transition-transform" />
                                                     </Button>

@@ -15,39 +15,60 @@ const firebaseConfig = {
     appId: process.env.VITE_FIREBASE_APP_ID
 };
 
+// ─── Validate ────────────────────────────────────────────
+if (!firebaseConfig.projectId) {
+    console.error("❌ Missing Firebase config. Make sure .env.local exists with VITE_FIREBASE_* variables.");
+    process.exit(1);
+}
+
+// ─── CLI Arguments ───────────────────────────────────────
+const [,, email, password, name = "Admin User", role = "ADMIN"] = process.argv;
+
+if (!email || !password) {
+    console.log(`
+  Usage: node scripts/create-admin.js <email> <password> [name] [role]
+  
+  Examples:
+    node scripts/create-admin.js admin@ieee.org MyPass123
+    node scripts/create-admin.js admin@ieee.org MyPass123 "John Doe" SUPER_ADMIN
+  
+  Roles: ADMIN (default), SUPER_ADMIN
+`);
+    process.exit(1);
+}
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 async function createAdmin() {
-    console.log("Creating Admin User...");
+    console.log(`Creating ${role} user: ${email} on project: ${firebaseConfig.projectId}`);
     try {
-        const userCredential = await createUserWithEmailAndPassword(
-            auth,
-            "hussainkmajmal786@gmail.com",
-            "passwordfgh"
-        );
-
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
         await setDoc(doc(db, "users", user.uid), {
             uid: user.uid,
-            name: "Hussain M",
+            name: name,
             email: user.email,
-            role: "ADMIN",
-            branch: "IEEE Kerala Section",
+            role: role,
+            branch: "IEEE Student Branch",
+            college: "",
             points: 0,
+            tasksCompleted: 0,
+            shares: 0,
+            badges: [],
             createdAt: new Date().toISOString()
         });
 
-        console.log(`✅ Admin user created successfully: ${user.email}`);
+        console.log(`✅ ${role} user created successfully: ${user.email} (uid: ${user.uid})`);
         process.exit(0);
     } catch (e) {
         if (e.code === 'auth/email-already-in-use') {
-            console.log("User already exists! Please attempt login.");
+            console.log("⚠️  User already exists. Please log in or use a different email.");
             process.exit(0);
         } else {
-            console.error("Error creating admin user:", e);
+            console.error("❌ Error creating admin user:", e.message);
             process.exit(1);
         }
     }

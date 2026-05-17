@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Create Super Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 36px;
+      width: 100%;
+      max-width: 420px;
+    }
+    h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; color: #f1f5f9; }
+    p  { font-size: 0.85rem; color: #94a3b8; margin-bottom: 24px; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #f1f5f9;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+      outline: none;
+    }
+    input:focus { border-color: #38bdf8; }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #0369a1; }
+    button:disabled { background: #334155; cursor: not-allowed; }
+    .status {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      display: none;
+    }
+    .status.success { background: #052e16; color: #4ade80; border: 1px solid #166534; display: block; }
+    .status.error   { background: #2d0a0a; color: #f87171; border: 1px solid #991b1b; display: block; }
+    .badge { display: inline-block; background: #0c4a6e; color: #38bdf8; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>IEEE Volunteer Connect <span class="badge">SETUP</span></h1>
+    <p>Create the Super Admin account for <strong>hussainkmajmal786@gmail.com</strong>.<br/>Run this once, then delete this file.</p>
+
+    <label>Name</label>
+    <input id="name" type="text" value="Super Admin" />
+
+    <label>Password</label>
+    <input id="password" type="password" placeholder="Min 6 characters" />
+
+    <label>Confirm Password</label>
+    <input id="confirm" type="password" placeholder="Repeat password" />
+
+    <button id="btn" onclick="createAdmin()">Create Super Admin</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp }                        from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyApuQadVIC182XbVvkBGasqY8cgNPwySjc",
+      authDomain:        "ieee-vc-cek-main.firebaseapp.com",
+      projectId:         "ieee-vc-cek-main",
+      storageBucket:     "ieee-vc-cek-main.firebasestorage.app",
+      messagingSenderId: "262095509641",
+      appId:             "1:262095509641:web:49f75c3a139273b4d74e58",
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    window.createAdmin = async function () {
+      const name     = document.getElementById("name").value.trim();
+      const password = document.getElementById("password").value;
+      const confirm  = document.getElementById("confirm").value;
+      const status   = document.getElementById("status");
+      const btn      = document.getElementById("btn");
+
+      status.className = "status";
+      status.textContent = "";
+
+      if (!name) return showError("Please enter a name.");
+      if (password.length < 6) return showError("Password must be at least 6 characters.");
+      if (password !== confirm) return showError("Passwords do not match.");
+
+      btn.disabled = true;
+      btn.textContent = "Creating...";
+
+      try {
+        const SUPER_ADMIN_EMAIL = "hussainkmajmal786@gmail.com";
+        const cred = await createUserWithEmailAndPassword(auth, SUPER_ADMIN_EMAIL, password);
+
+        await setDoc(doc(db, "users", cred.user.uid), {
+          name,
+          email:          SUPER_ADMIN_EMAIL,
+          role:           "SUPER_ADMIN",
+          approvalStatus: "APPROVED",
+          branch:         "IEEE Branch",
+          college:        "CEK",
+          points:         0,
+          badges:         [],
+          createdAt:      serverTimestamp(),
+        });
+
+        status.className = "status success";
+        status.textContent = "✓ Super Admin created successfully! You can now log in to the app and delete this file.";
+        btn.textContent = "Done";
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = "Create Super Admin";
+        showError(err.message);
+      }
+    };
+
+    function showError(msg) {
+      const status = document.getElementById("status");
+      status.className = "status error";
+      status.textContent = "✗ " + msg;
+    }
+  </script>
+</body>
+</html>

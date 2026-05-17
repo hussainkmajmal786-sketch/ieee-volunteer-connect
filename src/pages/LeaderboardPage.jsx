@@ -1,19 +1,53 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { db } from "../firebase/config";
-import { collection, query, orderBy, onSnapshot, where } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, where, deleteDoc, updateDoc, doc } from "firebase/firestore";
 import { getGrade, getNextGrade, getGradeProgress, GRADE_TIERS, getEarnedBadges } from "../utils/grades";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../hooks/useToast";
+import { RotateCcw, Trash2 } from "lucide-react";
+import MetaTags from "../shared/MetaTags";
 
 export default function LeaderboardPage() {
     const [leaders, setLeaders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('All');
+    const { isSuperAdmin } = useAuth();
+    const addToast = useToast();
+
+    // Super Admin: Reset user points
+    const handleResetPoints = async (userId, name) => {
+        if (!isSuperAdmin) return;
+        if (window.confirm(`Reset all points for "${name}" to 0?`)) {
+            try {
+                await updateDoc(doc(db, "users", userId), { points: 0 });
+                addToast(`Points reset for "${name}"`, 'info');
+            } catch (err) {
+                console.error(err);
+                addToast('Failed to reset points', 'error');
+            }
+        }
+    };
+
+    // Super Admin: Delete user from leaderboard
+    const handleDeleteFromLeaderboard = async (userId, name) => {
+        if (!isSuperAdmin) return;
+        if (window.confirm(`⚠️ PERMANENTLY DELETE "${name}" from the platform? This cannot be undone.`)) {
+            try {
+                await deleteDoc(doc(db, "users", userId));
+                addToast(`"${name}" removed from leaderboard`, 'warning');
+            } catch (err) {
+                console.error(err);
+                addToast('Failed to delete user', 'error');
+            }
+        }
+    };
 
     useEffect(() => {
         // Primary query: requires composite index (role + points desc)
         const q = query(
             collection(db, "users"),
-            where("role", "in", ["VOLUNTEER", "ADMIN"]),
+            where("role", "in", ["VOLUNTEER", "ADMIN", "STUDENT"]),
             orderBy("points", "desc")
         );
 
@@ -40,7 +74,7 @@ export default function LeaderboardPage() {
                 const usersData = [];
                 snapshot.forEach((doc) => {
                     const data = doc.data();
-                    if (data.role === "VOLUNTEER" || data.role === "ADMIN") {
+                    if (data.role === "VOLUNTEER" || data.role === "ADMIN" || data.role === "STUDENT") {
                         usersData.push({
                             id: doc.id,
                             name: data.name || 'Unknown User',
@@ -72,14 +106,25 @@ export default function LeaderboardPage() {
 
     if (loading) {
         return (
-            <div className="min-h-[calc(100vh-theme(spacing.20))] flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-ieee-blue border-t-transparent rounded-full animate-spin"></div>
+            <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
+                <div className="animate-pulse space-y-8">
+                    <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-3xl w-full"></div>
+                    <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="h-20 bg-gray-50 dark:bg-gray-800/50 rounded-2xl w-full"></div>
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }
 
     return (
         <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
+            <MetaTags 
+                title="Leaderboard" 
+                description="See the top-performing volunteers across IEEE branches. Compete, earn points, and climb the ranks!"
+            />
             <div className="text-center mb-10 max-w-xl mx-auto">
                 <p className="text-ieee-blue dark:text-cyan-400 font-bold text-sm uppercase tracking-widest mb-3">Compete & Grow</p>
                 <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">Leaderboard</h1>
@@ -157,6 +202,7 @@ export default function LeaderboardPage() {
                                         <th className="px-6 py-5 text-center">Badges</th>
                                         <th className="px-6 py-5 text-center">Progress</th>
                                         <th className="px-6 py-5 text-right">Points</th>
+                                        {isSuperAdmin && <th className="px-4 py-5 text-center w-24">Actions</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
@@ -225,6 +271,28 @@ export default function LeaderboardPage() {
                                                 <td className="px-6 py-4 text-right">
                                                     <span className="text-xl font-black text-gray-900 dark:text-white tabular-nums">{leader.points.toLocaleString()}</span>
                                                 </td>
+                                                {isSuperAdmin && (
+                                                    <td className="px-4 py-4">
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            {leader.points > 0 && (
+                                                                <button
+                                                                    onClick={() => handleResetPoints(leader.id, leader.name)}
+                                                                    className="p-1.5 text-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition"
+                                                                    title="Reset Points to 0"
+                                                                >
+                                                                    <RotateCcw className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={() => handleDeleteFromLeaderboard(leader.id, leader.name)}
+                                                                className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                                                                title="Remove from Leaderboard"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                )}
                                             </motion.tr>
                                         );
                                     })}
