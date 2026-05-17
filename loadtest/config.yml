@@ -1,0 +1,21 @@
+config:
+  target: "https://ieee-vc-cek-main.web.app"
+  phases:
+    - duration: 60
+      arrivalRate: 20
+      name: "Warm up"
+    - duration: 120
+      arrivalRate: 50
+      name: "Sustained load"
+  defaults:
+    headers:
+      User-Agent: "IEEE-VC-loadtest"
+scenarios:
+  - name: "Browse public pages"
+    flow:
+      - get:
+          url: "/"
+      - get:
+          url: "/events"
+      - get:
+          url: "/leaderboard"

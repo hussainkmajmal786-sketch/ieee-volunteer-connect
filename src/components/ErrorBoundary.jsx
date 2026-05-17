@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import Button from './Button';
+import { reportError } from '../utils/errorTracking';
 
 /**
  * Global Error Boundary component to catch React component errors.
@@ -18,7 +19,7 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("[ErrorBoundary] Caught an error:", error, errorInfo);
-    // You could send the error to Sentry here
+    reportError(error, { componentStack: errorInfo?.componentStack });
   }
 
   render() {

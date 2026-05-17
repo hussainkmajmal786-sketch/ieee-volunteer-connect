@@ -127,8 +127,8 @@ export default function LeaderboardPage() {
             />
             <div className="text-center mb-10 max-w-xl mx-auto">
                 <p className="text-ieee-blue dark:text-cyan-400 font-bold text-sm uppercase tracking-widest mb-3">Compete & Grow</p>
-                <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">Leaderboard</h1>
-                <p className="text-lg text-gray-500 dark:text-gray-400">Top volunteers ranked by points earned this semester.</p>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">Leaderboard</h1>
+                <p className="text-base sm:text-lg text-gray-500 dark:text-gray-400">Top volunteers ranked by points earned this semester.</p>
             </div>
 
             {/* Grade Tier Legend */}

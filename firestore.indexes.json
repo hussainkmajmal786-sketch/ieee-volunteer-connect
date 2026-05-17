@@ -7,34 +7,6 @@
                 { "fieldPath": "role", "order": "ASCENDING" },
                 { "fieldPath": "points", "order": "DESCENDING" }
             ]
-        },
-        {
-            "collectionGroup": "events",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "events",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "date", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "linkClicks",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "timestamp", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "linkClicks",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "timestamp", "order": "ASCENDING" }
-            ]
         }
     ],
     "fieldOverrides": []

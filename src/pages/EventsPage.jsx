@@ -98,8 +98,8 @@ export default function EventsPage() {
             />
             <div className="text-center mb-12 max-w-2xl mx-auto">
                 <p className="text-ieee-blue dark:text-cyan-400 font-bold text-sm uppercase tracking-widest mb-3">Browse & Register</p>
-                <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">Upcoming Events</h1>
-                <p className="text-lg text-gray-500 dark:text-gray-400">Find workshops, hackathons, and seminars to advance your skills.</p>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">Upcoming Events</h1>
+                <p className="text-base sm:text-lg text-gray-500 dark:text-gray-400">Find workshops, hackathons, and seminars to advance your skills.</p>
             </div>
 
             {/* Search + Filters */}

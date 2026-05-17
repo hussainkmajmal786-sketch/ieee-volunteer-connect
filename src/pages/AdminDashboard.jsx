@@ -555,22 +555,22 @@ export default function AdminDashboard() {
     const filteredVols = scopedVolunteers.filter(v => v.name?.toLowerCase().includes(searchVol.toLowerCase()) || v.email?.toLowerCase().includes(searchVol.toLowerCase()));
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
             <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">Admin Dashboard</h1>
+                    <div className="min-w-0 w-full sm:w-auto">
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">Admin Dashboard</h1>
                             {isSuperAdmin && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50">
                                     <Shield className="w-3 h-3" /> Super Admin
                                 </span>
                             )}
                         </div>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">Manage events, track volunteers, and monitor engagement.</p>
+                        <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm sm:text-base">Manage events, track volunteers, and monitor engagement.</p>
                     </div>
-                    <div className="flex gap-3 items-center">
+                    <div className="flex flex-wrap gap-2 sm:gap-3 items-center w-full sm:w-auto">
                         {/* College Filter — Super Admin only */}
                         {isSuperAdmin && (
                             <div className="relative">

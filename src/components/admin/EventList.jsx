@@ -38,7 +38,7 @@ const EventList = ({
           <p className="p-5 text-center text-gray-500">No events found. Create one above!</p>
         ) : (
           filteredEvents.map((evt) => (
-            <div key={evt.id} className="flex items-start gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition">
+            <div key={evt.id} className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition min-w-0">
               <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-ieee-blue/20 to-cyan-500/20 flex items-center justify-center">
                 {evt.imageUrl ? (
                   <img src={evt.imageUrl} alt={evt.name} className="w-full h-full object-cover" loading="lazy" />
@@ -51,10 +51,10 @@ const EventList = ({
                   <span className="truncate">{evt.name}</span>
                   <span className="bg-ieee-blue/10 text-ieee-blue text-[10px] uppercase font-bold px-2 py-0.5 rounded-md shrink-0">{evt.category || 'Event'}</span>
                 </h3>
-                <p className="text-xs text-gray-500 mt-1 flex items-center gap-3">
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {evt.date}</span>
-                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {evt.venue}</span>
-                  <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {evt.participants || 0}</span>
+                <p className="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap">
+                  <span className="flex items-center gap-1 shrink-0"><Clock className="w-3 h-3" /> {evt.date}</span>
+                  <span className="flex items-center gap-1 min-w-0"><MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{evt.venue}</span></span>
+                  <span className="flex items-center gap-1 shrink-0"><Users className="w-3 h-3" /> {evt.participants || 0}</span>
                 </p>
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <button onClick={() => viewRegistrations(evt.id, evt.name)} className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 transition">

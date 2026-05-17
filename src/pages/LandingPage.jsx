@@ -282,11 +282,11 @@ export default function LandingPage() {
             </section>
 
             {/* ===== HOW IT WORKS ===== */}
-            <section className="w-full py-24 bg-gray-50 dark:bg-gray-900/50">
+            <section className="w-full py-14 sm:py-20 lg:py-24 bg-gray-50 dark:bg-gray-900/50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
                         <p className="text-ieee-blue dark:text-cyan-400 font-bold text-sm uppercase tracking-widest mb-3">Simple Setup</p>
-                        <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">How It Works</h2>
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">How It Works</h2>
                     </motion.div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8" style={{ perspective: "1000px" }}>
                         {howItWorks.map((item, i) => {
@@ -318,12 +318,12 @@ export default function LandingPage() {
             </section>
 
             {/* ===== UPCOMING EVENTS (LIVE FROM FIRESTORE) ===== */}
-            <section className="w-full py-24">
+            <section className="w-full py-14 sm:py-20 lg:py-24">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-4">
                         <div>
                             <p className="text-ieee-blue dark:text-cyan-400 font-bold text-sm uppercase tracking-widest mb-3">Don&apos;t Miss Out</p>
-                            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">Upcoming Events</h2>
+                            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">Upcoming Events</h2>
                         </div>
                         <Link to="/events" className="text-ieee-blue dark:text-cyan-400 font-semibold hover:underline flex items-center gap-1">
                             View All Events <ChevronRight className="w-4 h-4" />
@@ -375,11 +375,11 @@ export default function LandingPage() {
             </section>
 
             {/* ===== TESTIMONIALS ===== */}
-            <section className="w-full py-24 bg-gray-50 dark:bg-gray-900/50">
+            <section className="w-full py-14 sm:py-20 lg:py-24 bg-gray-50 dark:bg-gray-900/50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
                         <p className="text-ieee-blue dark:text-cyan-400 font-bold text-sm uppercase tracking-widest mb-3">Trusted Worldwide</p>
-                        <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">What Branch Leaders Say</h2>
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">What Branch Leaders Say</h2>
                     </motion.div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8" style={{ perspective: "1200px" }}>
                         {testimonials.map((t, i) => (
@@ -412,10 +412,10 @@ export default function LandingPage() {
             </section>
 
             {/* ===== CTA ===== */}
-            <section className="w-full py-20 bg-gradient-to-r from-ieee-blue to-cyan-600 relative overflow-hidden">
+            <section className="w-full py-12 sm:py-16 lg:py-20 bg-gradient-to-r from-ieee-blue to-cyan-600 relative overflow-hidden">
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
                 <div className="max-w-3xl mx-auto px-4 text-center relative z-10">
-                    <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">Ready to transform your IEEE branch?</h2>
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-4">Ready to transform your IEEE branch?</h2>
                     <p className="text-lg text-white/80 mb-8">Join hundreds of student branches worldwide already using IEEE Volunteer Connect.</p>
                     <Link to={dashPath}>
                         <motion.button

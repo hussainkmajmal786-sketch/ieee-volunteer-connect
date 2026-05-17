@@ -6,8 +6,10 @@ import { Link } from "react-router-dom";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import { useToast } from "../hooks/useToast";
-import { db } from "../firebase/config";
-import { doc, collection, addDoc, query, where, getDocs, updateDoc, increment, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { useAuth } from "../hooks/useAuth";
+import { db, functions } from "../firebase/config";
+import { doc, collection, query, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import MetaTags from "../shared/MetaTags";
 import { trackingService } from "../services/trackingService";
 
@@ -90,6 +92,7 @@ export default function EventDetailPage() {
     const location = useLocation();
     const referredBy = new URLSearchParams(location.search).get('ref') || null;
     const addToast = useToast();
+    const { user } = useAuth();
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [registered, setRegistered] = useState(false);
@@ -179,25 +182,16 @@ export default function EventDetailPage() {
         trackingService.track('register_click', { element: 'register_submit', eventId: id, eventName: event?.name });
         setSubmitting(true);
         try {
-            const dupQuery = query(collection(db, "events", id, "registrations"), where("email", "==", form.email));
-            const dupSnap = await getDocs(dupQuery);
-            if (!dupSnap.empty) {
-                addToast('You are already registered for this event!', 'warning');
-                setSubmitting(false);
+            if (!user) {
+                addToast('Please sign in before registering for this event.', 'warning');
                 return;
             }
 
-            await addDoc(collection(db, "events", id, "registrations"), {
-                ...form,
-                registeredAt: new Date(),
+            const registerForEvent = httpsCallable(functions, 'registerForEvent');
+            await registerForEvent({
                 eventId: id,
-                ...(referredBy ? { referredBy } : {}),
-            });
-
-            const eventRef = doc(db, "events", id);
-            await updateDoc(eventRef, {
-                participants: increment(1),
-                ...(referredBy ? { [`refCounts.${referredBy}`]: increment(1) } : {}),
+                form,
+                referredBy,
             });
 
             setRegistered(true);

@@ -36,21 +36,32 @@ service cloud.firestore {
       return field is string && field.size() > 0 && field.size() <= maxLen;
     }
 
+    function participantCounterChangedBy(delta) {
+      return request.resource.data.participants is int
+        && resource.data.participants is int
+        && request.resource.data.participants == resource.data.participants + delta;
+    }
+
+    function isValidParticipantCounterUpdate() {
+      return isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants'])
+        && (participantCounterChangedBy(1) || participantCounterChangedBy(-1));
+    }
+
     // ─── EVENTS COLLECTION ───────────────────────────────────
     match /events/{eventId} {
       allow read: if true;
       allow create: if isAdmin()
         && isValidString(request.resource.data.name, 200)
         && isValidString(request.resource.data.venue, 200);
-      allow update: if isAdmin();
+      // Admin: full update. Anyone: only increment participants/refCounts on register
+      allow update: if isAdmin() || isValidParticipantCounterUpdate();
       allow delete: if isAdmin();
 
-      // Event registrations subcollection
+      // Event registrations subcollection — public registration allowed
       match /registrations/{regId} {
         allow read: if isAdmin() || isVolunteer();
-        allow create: if isSignedIn()
-          && isValidString(request.resource.data.name, 100)
-          && isValidString(request.resource.data.email, 200);
+        allow create: if false;
         allow update, delete: if isAdmin();
       }
 
@@ -75,8 +86,9 @@ service cloud.firestore {
         || isAdmin();
 
       // Self-update: blocks self-promotion to ADMIN/SUPER_ADMIN. Allows the
-      // existing STUDENT→VOLUNTEER finalize flow and PENDING→ACTIVE status
-      // change. Points may change (task completion uses increment()).
+      // STUDENT→VOLUNTEER finalize flow and the approval status transitions
+      // PENDING→ACTIVE and APPROVED_PENDING_FORM→ACTIVE.
+      // Points may change (task completion uses increment()).
       // Admin: full update.
       allow update: if isAdmin()
         || (isOwner(userId)
@@ -87,6 +99,7 @@ service cloud.firestore {
             && (
               request.resource.data.approvalStatus == resource.data.approvalStatus
               || (resource.data.approvalStatus == 'PENDING' && request.resource.data.approvalStatus == 'ACTIVE')
+              || (resource.data.approvalStatus == 'APPROVED_PENDING_FORM' && request.resource.data.approvalStatus == 'ACTIVE')
             ));
 
       // Only Super Admin can delete users
@@ -142,7 +155,7 @@ service cloud.firestore {
     // Anyone (including unauthenticated visitors) can write a click event.
     // Only admins can read the analytics.
     match /linkClicks/{clickId} {
-      allow create: if true;
+      allow create: if false;
       allow read: if isAdmin();
       allow update, delete: if false;
     }

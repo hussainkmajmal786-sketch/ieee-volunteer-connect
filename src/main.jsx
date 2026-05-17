@@ -8,6 +8,9 @@ import { HelmetProvider } from 'react-helmet-async'
 import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './components/Toast'
 import SplashScreen from './components/SplashScreen'
+import { initErrorTracking } from './utils/errorTracking'
+
+initErrorTracking();
 
 function Root() {
     const [showSplash, setShowSplash] = useState(true);

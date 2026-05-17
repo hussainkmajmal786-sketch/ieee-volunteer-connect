@@ -287,12 +287,153 @@ describe("events", () => {
             })
         );
     });
+
+    it("allows authenticated participant counter increment by exactly one", async () => {
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            await setDoc(doc(ctx.firestore(), "events", "e1"), {
+                name: "IEEE Day",
+                venue: "Main Hall",
+                participants: 10,
+            });
+        });
+        await seedUser("alice", {
+            name: "Alice",
+            role: "VOLUNTEER",
+            approvalStatus: "ACTIVE",
+            points: 0,
+        });
+        await assertSucceeds(
+            updateDoc(doc(studentCtx("alice"), "events", "e1"), {
+                participants: 11,
+            })
+        );
+    });
+
+    it("allows authenticated participant counter decrement by exactly one", async () => {
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            await setDoc(doc(ctx.firestore(), "events", "e1"), {
+                name: "IEEE Day",
+                venue: "Main Hall",
+                participants: 10,
+            });
+        });
+        await seedUser("alice", {
+            name: "Alice",
+            role: "VOLUNTEER",
+            approvalStatus: "ACTIVE",
+            points: 0,
+        });
+        await assertSucceeds(
+            updateDoc(doc(studentCtx("alice"), "events", "e1"), {
+                participants: 9,
+            })
+        );
+    });
+
+    it("BLOCKS participant counter jumps", async () => {
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            await setDoc(doc(ctx.firestore(), "events", "e1"), {
+                name: "IEEE Day",
+                venue: "Main Hall",
+                participants: 10,
+            });
+        });
+        await seedUser("alice", {
+            name: "Alice",
+            role: "VOLUNTEER",
+            approvalStatus: "ACTIVE",
+            points: 0,
+        });
+        await assertFails(
+            updateDoc(doc(studentCtx("alice"), "events", "e1"), {
+                participants: 15,
+            })
+        );
+    });
+
+    it("BLOCKS unauthenticated participant counter writes", async () => {
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            await setDoc(doc(ctx.firestore(), "events", "e1"), {
+                name: "IEEE Day",
+                venue: "Main Hall",
+                participants: 10,
+            });
+        });
+        await assertFails(
+            updateDoc(doc(anonCtx(), "events", "e1"), {
+                participants: 11,
+            })
+        );
+    });
+
+    it("BLOCKS direct refCounts updates from clients", async () => {
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            await setDoc(doc(ctx.firestore(), "events", "e1"), {
+                name: "IEEE Day",
+                venue: "Main Hall",
+                participants: 10,
+                refCounts: { alice: 1 },
+            });
+        });
+        await seedUser("alice", {
+            name: "Alice",
+            role: "VOLUNTEER",
+            approvalStatus: "ACTIVE",
+            points: 0,
+        });
+        await assertFails(
+            updateDoc(doc(studentCtx("alice"), "events", "e1"), {
+                refCounts: { alice: 2 },
+            })
+        );
+    });
+});
+
+describe("event registrations", () => {
+    it("BLOCKS direct event registration writes from anonymous users", async () => {
+        await assertFails(
+            setDoc(doc(anonCtx(), "events", "e1", "registrations", "r1"), {
+                name: "Anon",
+                email: "anon@example.com",
+            })
+        );
+    });
+
+    it("BLOCKS direct event registration writes from authenticated users", async () => {
+        await seedUser("alice", {
+            name: "Alice",
+            role: "VOLUNTEER",
+            approvalStatus: "ACTIVE",
+            points: 0,
+        });
+        await assertFails(
+            setDoc(doc(studentCtx("alice"), "events", "e1", "registrations", "alice"), {
+                name: "Alice",
+                email: "alice@example.com",
+            })
+        );
+    });
 });
 
 describe("linkClicks", () => {
-    it("allows anonymous click writes (public tracking)", async () => {
-        await assertSucceeds(
+    it("BLOCKS anonymous direct click writes", async () => {
+        await assertFails(
             setDoc(doc(anonCtx(), "linkClicks", "c1"), {
+                eventId: "e1",
+                timestamp: new Date(),
+            })
+        );
+    });
+
+    it("BLOCKS authenticated direct click writes", async () => {
+        await seedUser("alice", {
+            name: "Alice",
+            role: "VOLUNTEER",
+            approvalStatus: "ACTIVE",
+            points: 0,
+        });
+        await assertFails(
+            setDoc(doc(studentCtx("alice"), "linkClicks", "c1"), {
                 eventId: "e1",
                 timestamp: new Date(),
             })

@@ -1,5 +1,6 @@
-import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, getCountFromServer, getDocs, where } from "firebase/firestore";
-import { db } from "../firebase/config";
+import { collection, query, orderBy, limit, onSnapshot, getCountFromServer, getDocs, where } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../firebase/config";
 
 function getDeviceType() {
     const ua = navigator.userAgent;
@@ -50,7 +51,8 @@ export const trackingService = {
             const source = deriveSource(document.referrer, utmSource);
             const medium = deriveMedium(source, params.get('utm_medium') || data.medium || null);
 
-            await addDoc(collection(db, 'linkClicks'), {
+            const recordLinkClick = httpsCallable(functions, 'recordLinkClick');
+            await recordLinkClick({
                 eventType,
                 source,
                 medium,
@@ -62,7 +64,6 @@ export const trackingService = {
                 refId: params.get('ref') || data.refId || null,
                 sessionId: getOrCreateSession(),
                 device: getDeviceType(),
-                timestamp: serverTimestamp(),
             });
         } catch { /* tracking must never break the app */ }
     },
