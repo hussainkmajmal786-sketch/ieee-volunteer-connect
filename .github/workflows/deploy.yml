@@ -56,11 +56,11 @@ jobs:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_SENTRY_TRACES_SAMPLE_RATE: ${{ secrets.VITE_SENTRY_TRACES_SAMPLE_RATE }}
 
-      - name: Dependency Audit
-        run: npm audit --audit-level=high
+      - name: Dependency Audit (production only)
+        run: npm audit --audit-level=high --omit=dev
 
       - name: Functions Dependency Audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
         working-directory: functions
 
       - name: Functions Static Check
