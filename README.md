@@ -2,7 +2,7 @@
 
 A volunteer management platform for IEEE student branches — events, tasks, points, leaderboards, and admin tooling in one place.
 
-**Live:** [ieee-volunteer-connect.vercel.app](https://ieee-volunteer-connect.vercel.app) · [ieee-vc-cek-main.web.app](https://ieee-vc-cek-main.web.app)
+**Live:** [ieee-vc-cek-main.web.app](https://ieee-vc-cek-main.web.app)
 
 ---
 
@@ -28,7 +28,7 @@ A volunteer management platform for IEEE student branches — events, tasks, poi
 | Backend | Firebase Firestore · Firebase Auth |
 | File uploads | Cloudinary |
 | Forms / validation | zod |
-| Hosting | Vercel (primary) · Firebase Hosting (mirror) |
+| Hosting | Firebase Hosting |
 | Analytics | Google Analytics 4 |
 
 ---
@@ -126,17 +126,10 @@ Rules are covered by unit tests in `tests/firestore.rules.test.js`.
 
 ## Deployment
 
-### Vercel (primary)
+Firebase handles hosting, database (Firestore), auth, and security rules.
 
 ```bash
-vercel deploy --prod
-```
-
-Configured via `vercel.json` — SPA rewrites, security headers, immutable cache for static assets.
-
-### Firebase Hosting + rules
-
-```bash
+npm run build
 firebase deploy --only hosting,firestore
 ```
 
