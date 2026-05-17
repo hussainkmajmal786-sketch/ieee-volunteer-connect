@@ -10,7 +10,7 @@ A volunteer management platform for IEEE student branches — events, tasks, poi
 
 - **Events** — Public event listing with categories, search, real-time updates, registration with duplicate detection, countdown timers, and per-event analytics.
 - **Volunteer dashboard** — Personal task list, points display, referral link generation with click tracking, auto-completion when referral targets are hit, and badge progression.
-- **Admin dashboard** — Full CRUD over events, volunteers, tasks, teams, and rewards. Live analytics, link-tracking panel, image uploads with cropping (Cloudinary), participant analytics, and registration management.
+- **Admin dashboard** — Full CRUD over events, volunteers, tasks, teams, and rewards. Live analytics, link-tracking panel, image uploads with cropping (Firebase Storage), participant analytics, and registration management.
 - **Leaderboard** — Public rankings by points with grade tiers and badge display.
 - **Auth** — Email/password, Google OAuth, password reset. Role-based access (`STUDENT` → `VOLUNTEER` → `ADMIN` → `SUPER_ADMIN`).
 - **PWA** — Installable, offline page, service worker.
@@ -26,7 +26,7 @@ A volunteer management platform for IEEE student branches — events, tasks, poi
 | Styling | Tailwind CSS 3 · custom design system (glassmorphism, IEEE blue) |
 | Motion | framer-motion 12 |
 | Backend | Firebase Firestore · Firebase Auth |
-| File uploads | Cloudinary |
+| File uploads | Firebase Storage |
 | Forms / validation | zod |
 | Hosting | Firebase Hosting |
 | Analytics | Google Analytics 4 |
@@ -41,7 +41,7 @@ npm install
 
 # 2. Configure environment
 cp .env.example .env.local
-# Fill in your Firebase + Cloudinary keys
+# Fill in your Firebase keys
 
 # 3. Run dev server
 npm run dev
@@ -104,7 +104,7 @@ src/
 ├── services/               # eventService, authService, adminService, trackingService
 ├── hooks/                  # useAuth, useTheme, useToast, useTracking
 ├── shared/                 # MetaTags, OptimizedImage, Skeleton
-├── utils/                  # constants, validation, analytics, cloudinaryUpload, ...
+├── utils/                  # constants, validation, analytics, firebaseUpload, ...
 └── firebase/config.js      # Firebase SDK initialization
 ```
 

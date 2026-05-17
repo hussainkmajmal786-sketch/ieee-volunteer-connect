@@ -6,7 +6,7 @@ import { useToast } from "../hooks/useToast";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase/config";
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, setDoc, getDocs, getDoc, increment, serverTimestamp } from "firebase/firestore";
-import { uploadToCloudinary } from '../utils/cloudinaryUpload';
+import { uploadImage as uploadToStorage } from '../utils/firebaseUpload';
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { initializeApp, deleteApp } from "firebase/app";
 import { getCroppedImg } from '../utils/cropImage';
@@ -180,7 +180,7 @@ export default function AdminDashboard() {
                 console.error("Crop failed, falling back to original file", err);
             }
         }
-        return await uploadToCloudinary(fileToUpload);
+        return await uploadToStorage(fileToUpload);
     };
 
     const handleCreateOrUpdateEvent = async (e) => {
