@@ -1,9 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Award, Clock, Github, Linkedin, Trophy, X, Globe, Mail, MapPin } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { db } from "../../firebase/config";
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 
-const spotlights = [
+const STATIC_SPOTLIGHTS = [
     { name: "Priya Sharma", role: "Branch Chair", avatar: "P", hours: 420, badges: ["Event Hero", "Core Volunteer", "Tech Mentor"], achievements: "Led 15+ events with 2000+ participants", gradient: "from-amber-400 to-yellow-300", rank: 1, bio: "Passionate about technology leadership and community building. Leading IEEE SB CEK to new heights.", linkedin: "https://linkedin.com/in/priya-sharma", github: "https://github.com/priyasharma", email: "priya@ieee.org", college: "CEK", branch: "Computer Science", year: "4th Year" },
     { name: "James Rodriguez", role: "Technical Lead", avatar: "J", hours: 380, badges: ["Innovation Lead", "Core Volunteer"], achievements: "Built 3 IEEE projects, mentored 20+ students", gradient: "from-ieee-blue to-cyan-400", rank: 2, bio: "Full-stack developer and open-source contributor. Love building tools that make a difference.", linkedin: "https://linkedin.com/in/james-rodriguez", github: "https://github.com/jamesrodriguez", email: "james@ieee.org", college: "CEK", branch: "Electronics", year: "3rd Year" },
     { name: "Aisha Khan", role: "Event Coordinator", avatar: "A", hours: 310, badges: ["Event Hero", "Rising Star"], achievements: "Organized 10+ events, 95% satisfaction rate", gradient: "from-violet-500 to-purple-400", rank: 3, bio: "Creative event planner with a knack for making every IEEE event memorable and impactful.", linkedin: "https://linkedin.com/in/aisha-khan", github: "https://github.com/aishakhan", email: "aisha@ieee.org", college: "CEK", branch: "EEE", year: "3rd Year" },
@@ -19,6 +21,19 @@ const BADGE_COLORS = {
 
 export default function VolunteerSpotlight() {
     const [selected, setSelected] = useState(null);
+    const [data, setData] = useState([]);
+
+    useEffect(() => {
+        const q = query(collection(db, "spotlights"), orderBy("rank", "asc"));
+        const unsub = onSnapshot(q, snap => {
+            setData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }, (err) => {
+            console.error("Error fetching spotlights:", err);
+        });
+        return unsub;
+    }, []);
+
+    const spotlights = data.length > 0 ? data : STATIC_SPOTLIGHTS;
 
     return (
         <section id="volunteer-spotlight" className="w-full py-14 sm:py-20 lg:py-24 bg-gray-50 dark:bg-gray-900/50">
@@ -33,7 +48,7 @@ export default function VolunteerSpotlight() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {spotlights.map((vol, i) => (
                         <motion.div
-                            key={vol.name}
+                            key={vol.id || vol.name}
                             initial={{ opacity: 0, y: 40 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
@@ -58,13 +73,13 @@ export default function VolunteerSpotlight() {
                                     <p className="text-[10px] text-gray-400 font-semibold uppercase">Hours</p>
                                 </div>
                                 <div className="text-center">
-                                    <div className="flex items-center gap-1 text-amber-500"><Award className="w-4 h-4" /><span className="text-lg font-black">{vol.badges.length}</span></div>
+                                    <div className="flex items-center gap-1 text-amber-500"><Award className="w-4 h-4" /><span className="text-lg font-black">{(vol.badges || []).length}</span></div>
                                     <p className="text-[10px] text-gray-400 font-semibold uppercase">Badges</p>
                                 </div>
                             </div>
                             <p className="text-sm text-gray-600 dark:text-gray-300 text-center mb-4">{vol.achievements}</p>
                             <div className="flex flex-wrap justify-center gap-1.5 mb-4">
-                                {vol.badges.map(b => (
+                                {(vol.badges || []).map(b => (
                                     <span key={b} className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg ${BADGE_COLORS[b] || "bg-gray-100 text-gray-600"}`}>{b}</span>
                                 ))}
                             </div>

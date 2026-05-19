@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PlusCircle, Trash2, X, Sparkles, FolderOpen, BookOpen, Cpu, MessageSquare, Building, Newspaper, CheckCircle, XCircle, Clock, FileText, Send, Link2, ExternalLink } from "lucide-react";
+import { PlusCircle, Trash2, X, Sparkles, FolderOpen, BookOpen, Cpu, MessageSquare, Building, Newspaper, CheckCircle, XCircle, Clock, FileText, Send, Link2, ExternalLink, Star } from "lucide-react";
 import { db } from "../../firebase/config";
 import { collection, onSnapshot, query, orderBy, doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { adminService } from "../../services/adminService";
@@ -14,6 +14,7 @@ const TABS = [
     { key: "testimonials", label: "Testimonials", icon: MessageSquare },
     { key: "sponsors", label: "Sponsors", icon: Building },
     { key: "news", label: "News", icon: Newspaper },
+    { key: "spotlights", label: "Spotlights", icon: Star },
     { key: "applications", label: "Applications", icon: FileText },
 ];
 
@@ -83,7 +84,7 @@ export default function ContentManager() {
     const handleDelete = async (id) => {
         if (!window.confirm("Delete this item permanently?")) return;
         try {
-            const methods = { opportunities: "deleteOpportunity", projects: "deleteProject", resources: "deleteResource", chapters: "deleteChapter", testimonials: "deleteTestimonial", sponsors: "deleteSponsor", news: "deleteNews", applications: "deleteApplication" };
+            const methods = { opportunities: "deleteOpportunity", projects: "deleteProject", resources: "deleteResource", chapters: "deleteChapter", testimonials: "deleteTestimonial", sponsors: "deleteSponsor", news: "deleteNews", spotlights: "deleteSpotlight", applications: "deleteApplication" };
             await adminService[methods[tab]](id);
             addToast("Deleted!", "info");
         } catch (err) { addToast("Delete failed: " + err.message, "error"); }
@@ -111,10 +112,29 @@ export default function ContentManager() {
     const handleAddNews = async (form) => {
         await adminService.createNews({ title: form.title, desc: form.desc, tag: form.tag, time: "Just now" });
     };
+    const handleAddSpotlight = async (form) => {
+        await adminService.createSpotlight({
+            name: form.name,
+            role: form.role,
+            avatar: form.avatar,
+            hours: parseInt(form.hours) || 0,
+            badges: form.badges.split(",").map(s => s.trim()).filter(Boolean),
+            achievements: form.achievements,
+            gradient: form.gradient || "from-ieee-blue to-cyan-400",
+            rank: parseInt(form.rank) || 99,
+            bio: form.bio,
+            linkedin: form.linkedin || "",
+            github: form.github || "",
+            email: form.email || "",
+            college: form.college || "",
+            branch: form.branch || "",
+            year: form.year || "",
+        });
+    };
 
     const handleAdd = async (form) => {
         try {
-            const handlers = { opportunities: handleAddOpportunity, projects: handleAddProject, resources: handleAddResource, chapters: handleAddChapter, testimonials: handleAddTestimonial, sponsors: handleAddSponsor, news: handleAddNews };
+            const handlers = { opportunities: handleAddOpportunity, projects: handleAddProject, resources: handleAddResource, chapters: handleAddChapter, testimonials: handleAddTestimonial, sponsors: handleAddSponsor, news: handleAddNews, spotlights: handleAddSpotlight };
             await handlers[tab](form);
             addToast("Created successfully!", "success");
             setModal(null);
@@ -366,6 +386,23 @@ function AddForm({ type, onSubmit, onClose }) {
             { key: "title", label: "Title", required: true },
             { key: "desc", label: "Description" },
             { key: "tag", label: "Tag", type: "select", options: ["Hackathon", "Scholarship", "Internship", "Announcement", "Event"] },
+        ],
+        spotlights: [
+            { key: "name", label: "Name", required: true },
+            { key: "role", label: "Role", required: true },
+            { key: "avatar", label: "Initials (Avatar)", required: true },
+            { key: "hours", label: "Hours (Number)", required: true },
+            { key: "badges", label: "Badges (comma-separated)", required: true },
+            { key: "achievements", label: "Achievements", required: true },
+            { key: "gradient", label: "Gradient Theme", type: "select", options: ["from-amber-400 to-yellow-300", "from-ieee-blue to-cyan-400", "from-violet-500 to-purple-400", "from-emerald-400 to-green-300", "from-rose-400 to-red-300"] },
+            { key: "rank", label: "Rank (Number)", required: true },
+            { key: "bio", label: "Bio", type: "textarea", required: true },
+            { key: "linkedin", label: "LinkedIn URL" },
+            { key: "github", label: "GitHub URL" },
+            { key: "email", label: "Email" },
+            { key: "college", label: "College" },
+            { key: "branch", label: "Branch" },
+            { key: "year", label: "Year" },
         ],
     };
 

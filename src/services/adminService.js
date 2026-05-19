@@ -420,6 +420,22 @@ class AdminService {
     async deleteApplication(appId) {
         await deleteDoc(doc(db, "applications", appId));
     }
+    // ─── SPOTLIGHTS ─────────────────────────────────────────
+
+    async createSpotlight(data) {
+        return await addDoc(collection(db, "spotlights"), {
+            ...data,
+            createdAt: serverTimestamp(),
+        });
+    }
+
+    async updateSpotlight(id, data) {
+        await updateDoc(doc(db, "spotlights", id), data);
+    }
+
+    async deleteSpotlight(id) {
+        await deleteDoc(doc(db, "spotlights", id));
+    }
 }
 
 export const adminService = new AdminService();
