@@ -16,6 +16,12 @@ const EventsPage = lazy(() => import("./pages/EventsPage"));
 const EventDetailPage = lazy(() => import("./pages/EventDetailPage"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+const OpportunitiesPage = lazy(() => import("./pages/OpportunitiesPage"));
+const VolunteersPage = lazy(() => import("./pages/VolunteersPage"));
+const ChaptersPage = lazy(() => import("./pages/ChaptersPage"));
+const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
+const ResourcesPage = lazy(() => import("./pages/ResourcesPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
 
 function PageLoader() {
   return (
@@ -78,6 +84,16 @@ function App() {
             <Route path="events" element={<EventsPage />} />
             <Route path="event/:id" element={<EventDetailPage />} />
             <Route path="leaderboard" element={<LeaderboardPage />} />
+            <Route path="opportunities" element={<OpportunitiesPage />} />
+            <Route path="volunteers" element={<VolunteersPage />} />
+            <Route path="chapters" element={<ChaptersPage />} />
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="resources" element={
+              <ProtectedRoute>
+                <ResourcesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="contact" element={<ContactPage />} />
 
             {/* Protected Routes */}
             <Route path="admin" element={

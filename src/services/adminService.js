@@ -278,6 +278,149 @@ class AdminService {
         URL.revokeObjectURL(url);
         return true;
     }
+
+    // ─── OPPORTUNITIES ──────────────────────────────────────
+
+    async createOpportunity(data) {
+        return await addDoc(collection(db, "opportunities"), {
+            ...data,
+            createdAt: serverTimestamp(),
+        });
+    }
+
+    async updateOpportunity(id, data) {
+        await updateDoc(doc(db, "opportunities", id), data);
+    }
+
+    async deleteOpportunity(id) {
+        await deleteDoc(doc(db, "opportunities", id));
+    }
+
+    // ─── PROJECTS ───────────────────────────────────────────
+
+    async createProject(data) {
+        return await addDoc(collection(db, "projects"), {
+            ...data,
+            createdAt: serverTimestamp(),
+        });
+    }
+
+    async updateProject(id, data) {
+        await updateDoc(doc(db, "projects", id), data);
+    }
+
+    async deleteProject(id) {
+        await deleteDoc(doc(db, "projects", id));
+    }
+
+    // ─── RESOURCES ──────────────────────────────────────────
+
+    async createResource(data) {
+        return await addDoc(collection(db, "resources"), {
+            ...data,
+            createdAt: serverTimestamp(),
+        });
+    }
+
+    async updateResource(id, data) {
+        await updateDoc(doc(db, "resources", id), data);
+    }
+
+    async deleteResource(id) {
+        await deleteDoc(doc(db, "resources", id));
+    }
+
+    // ─── CHAPTERS ───────────────────────────────────────────
+
+    async createChapter(data) {
+        return await addDoc(collection(db, "chapters"), {
+            ...data,
+            createdAt: serverTimestamp(),
+        });
+    }
+
+    async updateChapter(id, data) {
+        await updateDoc(doc(db, "chapters", id), data);
+    }
+
+    async deleteChapter(id) {
+        await deleteDoc(doc(db, "chapters", id));
+    }
+
+    // ─── TESTIMONIALS ───────────────────────────────────────
+
+    async createTestimonial(data) {
+        return await addDoc(collection(db, "testimonials"), {
+            ...data,
+            createdAt: serverTimestamp(),
+        });
+    }
+
+    async deleteTestimonial(id) {
+        await deleteDoc(doc(db, "testimonials", id));
+    }
+
+    // ─── SPONSORS ───────────────────────────────────────────
+
+    async createSponsor(data) {
+        return await addDoc(collection(db, "sponsors"), {
+            ...data,
+            createdAt: serverTimestamp(),
+        });
+    }
+
+    async deleteSponsor(id) {
+        await deleteDoc(doc(db, "sponsors", id));
+    }
+
+    // ─── NEWS ───────────────────────────────────────────────
+
+    async createNews(data) {
+        return await addDoc(collection(db, "news"), {
+            ...data,
+            createdAt: serverTimestamp(),
+        });
+    }
+
+    async updateNews(id, data) {
+        await updateDoc(doc(db, "news", id), data);
+    }
+
+    async deleteNews(id) {
+        await deleteDoc(doc(db, "news", id));
+    }
+
+    // ─── APPLICATIONS ───────────────────────────────────────
+
+    async createApplication(userId, targetType, targetId, targetName) {
+        return await addDoc(collection(db, "applications"), {
+            userId,
+            targetType,
+            targetId,
+            targetName,
+            status: "PENDING",
+            createdAt: serverTimestamp(),
+        });
+    }
+
+    async approveApplication(appId) {
+        await updateDoc(doc(db, "applications", appId), {
+            status: "APPROVED",
+            reviewedAt: serverTimestamp(),
+        });
+    }
+
+    async rejectApplication(appId) {
+        await updateDoc(doc(db, "applications", appId), {
+            status: "REJECTED",
+            reviewedAt: serverTimestamp(),
+        });
+    }
+
+    async deleteApplication(appId) {
+        await deleteDoc(doc(db, "applications", appId));
+    }
 }
 
 export const adminService = new AdminService();
+

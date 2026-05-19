@@ -478,3 +478,106 @@ describe("unknown collections", () => {
         );
     });
 });
+
+describe("notifications — admin notify flow", () => {
+    it("allows ADMIN to write to the global notifications collection", async () => {
+        await seedUser("admin1", {
+            name: "Admin",
+            role: "ADMIN",
+            approvalStatus: "ACTIVE",
+            points: 0,
+        });
+        await assertSucceeds(
+            setDoc(doc(adminCtx("admin1"), "notifications", "n1"), {
+                title: "Event Update",
+                message: "Venue changed to Seminar Hall 2",
+                createdAt: serverTimestamp(),
+            })
+        );
+    });
+
+    it("allows SUPER_ADMIN to write to global notifications", async () => {
+        await seedUser("u_super", {
+            name: "Super",
+            role: "SUPER_ADMIN",
+            approvalStatus: "ACTIVE",
+            points: 0,
+        });
+        await assertSucceeds(
+            setDoc(doc(superAdminCtx("u_super"), "notifications", "n2"), {
+                title: "All Events",
+                message: "Welcome",
+                createdAt: serverTimestamp(),
+            })
+        );
+    });
+
+    it("BLOCKS volunteer from writing to global notifications", async () => {
+        await seedUser("vol1", {
+            name: "Vol",
+            role: "VOLUNTEER",
+            approvalStatus: "ACTIVE",
+            points: 100,
+        });
+        await assertFails(
+            setDoc(doc(studentCtx("vol1"), "notifications", "n3"), {
+                title: "Spam",
+                message: "From volunteer",
+                createdAt: serverTimestamp(),
+            })
+        );
+    });
+
+    it("BLOCKS anonymous user from writing to global notifications", async () => {
+        await assertFails(
+            setDoc(doc(anonCtx(), "notifications", "n4"), {
+                title: "Anon",
+                message: "Unauthorized",
+                createdAt: serverTimestamp(),
+            })
+        );
+    });
+
+    it("allows any signed-in user to READ notifications", async () => {
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            await setDoc(doc(ctx.firestore(), "notifications", "n5"), {
+                title: "Existing",
+                message: "Hello",
+            });
+        });
+        await seedUser("vol2", {
+            name: "Vol",
+            role: "VOLUNTEER",
+            approvalStatus: "ACTIVE",
+            points: 0,
+        });
+        const { getDoc } = await import("firebase/firestore");
+        await assertSucceeds(getDoc(doc(studentCtx("vol2"), "notifications", "n5")));
+    });
+
+    it("allows ADMIN to write to event sub-collection notifications", async () => {
+        await seedUser("admin1", {
+            name: "Admin",
+            role: "ADMIN",
+            approvalStatus: "ACTIVE",
+            points: 0,
+        });
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            await setDoc(doc(ctx.firestore(), "events", "e1"), {
+                name: "Test Event",
+                venue: "Hall A",
+                participants: 0,
+            });
+        });
+        await assertSucceeds(
+            setDoc(
+                doc(adminCtx("admin1"), "events", "e1", "notifications", "n1"),
+                {
+                    message: "Per-event notification",
+                    eventName: "Test Event",
+                    createdAt: serverTimestamp(),
+                }
+            )
+        );
+    });
+});

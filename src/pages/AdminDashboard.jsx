@@ -26,6 +26,7 @@ import TaskList from '../components/admin/TaskList';
 import TeamList from '../components/admin/TeamList';
 import RewardList from '../components/admin/RewardList';
 import LinkTrackingPanel from '../components/admin/LinkTrackingPanel';
+import ContentManager from '../components/admin/ContentManager';
 
 // Modals
 import EventModal from '../components/admin/modals/EventModal';
@@ -692,6 +693,9 @@ export default function AdminDashboard() {
                 <div className="mt-8 bg-gray-50 dark:bg-gray-800/30 rounded-3xl border border-gray-100 dark:border-gray-700 p-6 md:p-8">
                     <LinkTrackingPanel volunteers={scopedVolunteers} events={events} />
                 </div>
+
+                {/* ── Super Admin Content Manager ── */}
+                {isSuperAdmin && <ContentManager />}
             </div>
 
             {/* Modals Container */}
