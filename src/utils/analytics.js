@@ -1,41 +1,31 @@
+import { logEvent as firebaseLogEvent } from "firebase/analytics";
+import { analytics } from "../firebase/config";
+
 /**
- * Simple Google Analytics integration script.
- * Usage: Initialize in the main entry point (main.jsx or App.jsx).
+ * Google Analytics integration via Firebase.
+ * Usage: Initialize is handled by Firebase config. This utility provides wrapper functions.
  */
 
 export const initGA = (trackingId) => {
-    if (typeof window === 'undefined') return;
-    if (!trackingId) {
-        console.warn("[Analytics] Tracking ID missing. Skipping initialization.");
-        return;
+    // Initialization is now handled automatically by Firebase Analytics in config.js
+    // We keep this function to prevent breaking App.jsx, but we can just log it.
+    if (analytics) {
+        console.log("[Analytics] Firebase GA4 Initialized");
+    } else {
+        console.warn("[Analytics] Firebase GA4 failed to initialize.");
     }
-
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${trackingId}`;
-    document.head.appendChild(script);
-
-    window.dataLayer = window.dataLayer || [];
-    function gtag() {
-        window.dataLayer.push(arguments);
-    }
-    window.gtag = gtag;
-    gtag('js', new Date());
-    gtag('config', trackingId);
-
-    console.log("[Analytics] GA4 Initialized");
 };
 
 export const logPageView = (path) => {
-    if (window.gtag) {
-        window.gtag('event', 'page_view', {
+    if (analytics) {
+        firebaseLogEvent(analytics, 'page_view', {
             page_path: path,
         });
     }
 };
 
 export const logEvent = (action, params) => {
-    if (window.gtag) {
-        window.gtag('event', action, params);
+    if (analytics) {
+        firebaseLogEvent(analytics, action, params);
     }
 };

@@ -44,11 +44,8 @@ function AnalyticsTracker() {
   const location = useLocation();
   
   useEffect(() => {
-    // GA4 Initialization — skip if no real tracking ID configured
-    const gaId = import.meta.env.VITE_GA_ID;
-    if (gaId && gaId !== "G-XXXXXXXXXX") {
-      initGA(gaId);
-    }
+    // GA4 Initialization is now handled by Firebase config
+    initGA();
   }, []);
 
   useEffect(() => {
