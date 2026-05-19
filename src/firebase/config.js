@@ -22,13 +22,10 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 
-// Initialize Analytics conditionally (only runs in browser environment)
-// Using initializeAnalytics with cookie_domain: 'none' to prevent invalid domain warnings
-export const analytics = typeof window !== 'undefined' ? initializeAnalytics(app, {
-    config: {
-        cookie_domain: 'none',
-        cookie_flags: 'SameSite=None;Secure'
-    }
-}) : null;
+// Initialize Analytics conditionally (only runs in browser environment and not in dev)
+// Disabling in development completely prevents invalid domain cookie rejection warnings
+export const analytics = typeof window !== 'undefined' && !import.meta.env.DEV 
+    ? initializeAnalytics(app) 
+    : null;
 
 export default app;

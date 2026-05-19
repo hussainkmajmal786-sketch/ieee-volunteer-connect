@@ -11,6 +11,8 @@ export const initGA = () => {
     // We keep this function to prevent breaking App.jsx, but we can just log it.
     if (analytics) {
         console.log("[Analytics] Firebase GA4 Initialized");
+    } else if (import.meta.env.DEV) {
+        console.log("[Analytics] Firebase GA4 disabled in development mode to prevent cookie warnings.");
     } else {
         console.warn("[Analytics] Firebase GA4 failed to initialize.");
     }
