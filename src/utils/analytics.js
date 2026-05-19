@@ -6,7 +6,7 @@ import { analytics } from "../firebase/config";
  * Usage: Initialize is handled by Firebase config. This utility provides wrapper functions.
  */
 
-export const initGA = (trackingId) => {
+export const initGA = () => {
     // Initialization is now handled automatically by Firebase Analytics in config.js
     // We keep this function to prevent breaking App.jsx, but we can just log it.
     if (analytics) {

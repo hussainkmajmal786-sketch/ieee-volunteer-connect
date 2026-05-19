@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { MapPin, Clock, Wifi, WifiOff, ChevronRight, Sparkles, Search, Filter, LogIn, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
-import { collection, onSnapshot, query, orderBy, where, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, where } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/adminService";
 import { useToast } from "../hooks/useToast";

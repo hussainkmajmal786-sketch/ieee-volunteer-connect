@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Calendar, MapPin, Clock, Radio, ExternalLink, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { eventService } from "../../services/eventService";

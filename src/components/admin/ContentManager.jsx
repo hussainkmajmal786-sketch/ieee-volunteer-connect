@@ -76,6 +76,7 @@ export default function ContentManager() {
             });
         }));
         return () => unsubs.forEach(u => u());
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const items = data[tab] || [];
