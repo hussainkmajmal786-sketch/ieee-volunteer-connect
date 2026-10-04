@@ -41,7 +41,13 @@
   //   GOOGLE_CLIENT_ID      optional — enables "Sign in with Google"
   //   GOOGLE_CLIENT_SECRET  optional
   //   FIREBASE_API_KEY      lets migrated users sign in with their old password
-  //   RESEND_API_KEY        optional — enables "Forgot password" emails
+  //   BREVO_API_KEY         email (participant messages + "Forgot password"); also set
+  //   BREVO_SENDER_EMAIL    the verified sender address (e.g. your Gmail)
+  //   FAST2SMS_API_KEY      SMS to participants (Fast2SMS Quick SMS route)
+  //   WHATSAPP_TOKEN        WhatsApp Cloud API permanent token
+  //   WHATSAPP_PHONE_NUMBER_ID
+  // Optional vars: BREVO_SENDER_NAME, WHATSAPP_TEMPLATE (default "ieee_update",
+  //   body "Hi {{1}}, {{2}}"), WHATSAPP_TEMPLATE_LANG (default "en").
 
   "observability": { "enabled": true }
 }

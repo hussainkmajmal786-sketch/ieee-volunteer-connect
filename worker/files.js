@@ -25,3 +25,21 @@ export async function getFile(env, key) {
     }
     return null;
 }
+
+/** Raw stored object ({ body }) for responses that set their own headers. */
+export async function getFileObject(env, key) {
+    if (env.FILES) {
+        const obj = await env.FILES.get(key);
+        return obj ? { body: obj.body } : null;
+    }
+    if (env.FILES_KV) {
+        const body = await env.FILES_KV.get(key, { type: 'stream' });
+        return body ? { body } : null;
+    }
+    return null;
+}
+
+export async function deleteFile(env, key) {
+    if (env.FILES) await env.FILES.delete(key);
+    else if (env.FILES_KV) await env.FILES_KV.delete(key);
+}

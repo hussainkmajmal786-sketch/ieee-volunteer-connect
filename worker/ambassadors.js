@@ -16,7 +16,7 @@ async function requireSuperAdmin(ctx) {
 }
 
 /** Insert one inbox message per recipient in a single statement. */
-async function sendInbox(db, userIds, { title, message, from, kind = 'message', link = null }) {
+export async function sendInbox(db, userIds, { title, message, from, kind = 'message', link = null }) {
     const ids = [...new Set(userIds)].filter(Boolean);
     if (ids.length === 0) return 0;
     const now = Date.now();
@@ -35,6 +35,20 @@ async function sendInbox(db, userIds, { title, message, from, kind = 'message', 
     stmts.push(db.prepare("INSERT INTO coll_versions (parent, version) VALUES ('inbox', 1) ON CONFLICT(parent) DO UPDATE SET version = version + 1"));
     await db.batch(stmts);
     return ids.length;
+}
+
+/** Ids of users in a named audience (for notifications and file sharing). */
+export async function audienceUserIds(db, audience) {
+    const where = {
+        campus: "json_extract(data, '$.ambassadorType') = 'campus'",
+        class: "json_extract(data, '$.ambassadorType') = 'class'",
+        ambassadors: "json_extract(data, '$.ambassadorType') IN ('campus', 'class')",
+        volunteers: "(json_extract(data, '$.role') = 'VOLUNTEER' OR json_extract(data, '$.ambassadorType') IS NOT NULL)",
+        everyone: '1 = 1',
+    }[audience];
+    if (!where) return [];
+    const { results } = await db.prepare(`SELECT id FROM docs WHERE parent = 'users' AND ${where}`).all();
+    return results.map(r => r.id);
 }
 
 /** Ids of users whose ambassadorType is one of `types`. */

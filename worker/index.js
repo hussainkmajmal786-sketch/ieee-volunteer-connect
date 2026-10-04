@@ -13,6 +13,8 @@ import {
 } from './docstore.js';
 import { registerForEvent, recordLinkClick } from './functions.js';
 import { applyClassAmbassador, reviewApplication, notifyAmbassadors, shortLink } from './ambassadors.js';
+import { createShare, listShares, downloadShare, deleteShare } from './sharedFiles.js';
+import { listParticipants, sendBatch } from './messaging.js';
 import { putFile, getFile } from './files.js';
 
 const STATUS = {
@@ -176,6 +178,18 @@ app.post('/api/admin/ambassador-applications/:id', async (c) => {
     return c.json(await reviewApplication(c.env, c.get('ctx'), c.req.param('id'), status));
 });
 
+// ─── Shared files (super admin → ambassadors / volunteers) ────
+
+app.post('/api/shared-files', async (c) => c.json(await createShare(c.env, c.get('ctx'), await c.req.formData())));
+app.get('/api/shared-files', async (c) => c.json({ files: await listShares(c.env, c.get('ctx')) }));
+app.get('/api/shared-files/:id/download', (c) => downloadShare(c.env, c.get('ctx'), c.req.param('id'), { inline: c.req.query('view') === '1' }));
+app.delete('/api/shared-files/:id', async (c) => c.json(await deleteShare(c.env, c.get('ctx'), c.req.param('id'))));
+
+// ─── Messages to registered participants (super admin) ────────
+
+app.get('/api/admin/participants', async (c) => c.json(await listParticipants(c.env, c.get('ctx'), c.req.query('eventId') || null)));
+app.post('/api/admin/broadcast', async (c) => c.json(await sendBatch(c.env, c.get('ctx'), await c.req.json())));
+
 app.post('/api/upload', async (c) => {
     const ctx = c.get('ctx');
     const form = await c.req.formData();
@@ -192,6 +206,8 @@ app.post('/api/upload', async (c) => {
 
 app.get('/files/*', async (c) => {
     const key = decodeURIComponent(c.req.path.slice('/files/'.length));
+    // Shared files are private: they're only served through the checked download route.
+    if (key.startsWith('shared/')) return c.notFound();
     const res = await getFile(c.env, key);
     return res || c.notFound();
 });

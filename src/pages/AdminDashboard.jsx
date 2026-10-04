@@ -27,6 +27,7 @@ import RewardList from '../components/admin/RewardList';
 import LinkTrackingPanel from '../components/admin/LinkTrackingPanel';
 import AmbassadorMonitor from '../components/admin/AmbassadorMonitor';
 import AmbassadorProgram from '../components/admin/AmbassadorProgram';
+import CommunicationCenter from '../components/admin/CommunicationCenter';
 import ContentManager from '../components/admin/ContentManager';
 
 // Modals
@@ -712,6 +713,9 @@ export default function AdminDashboard() {
 
                 {/* ── Campus / Class ambassadors (super admin) ── */}
                 {isSuperAdmin && <AmbassadorProgram users={volunteers} />}
+
+                {/* ── Files & messages (super admin) ── */}
+                {isSuperAdmin && <CommunicationCenter users={volunteers} events={events} />}
 
                 {/* ── Super Admin Content Manager ── */}
                 {isSuperAdmin && <ContentManager />}

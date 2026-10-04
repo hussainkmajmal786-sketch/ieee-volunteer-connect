@@ -16,7 +16,19 @@ export function getAuth(env) {
 }
 
 async function sendEmail(env, to, subject, html) {
-    if (!env.RESEND_API_KEY) throw new Error('Email is not configured (RESEND_API_KEY)');
+    if (env.BREVO_API_KEY && env.BREVO_SENDER_EMAIL) {
+        const res = await fetch(env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+                sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'IEEE SB CEK' },
+                to: [{ email: to }], subject, htmlContent: html,
+            }),
+        });
+        if (!res.ok) throw new Error(`Email send failed: ${res.status}`);
+        return;
+    }
+    if (!env.RESEND_API_KEY) throw new Error('Email is not configured (BREVO_API_KEY)');
     const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
