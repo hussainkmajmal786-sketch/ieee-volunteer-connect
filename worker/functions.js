@@ -64,6 +64,7 @@ export async function registerForEvent(env, auth, data) {
         phone: requireString(form.phone, 'phone', 40),
         college: requireString(form.college, 'college', 160),
         year: requireString(form.year, 'year', 40),
+        department: optionalString(form.department, 120),
         eventId,
         registeredAt: { __ts: Date.now() },
     };

@@ -18,6 +18,10 @@ describe('mapAnswers', () => {
         expect(mapAnswers({ 'Name of college': 'CEK', 'Ambassador name': 'Ravi', 'Your name': 'Meera' }).core.name).toBe('Meera');
     });
 
+    it('recognises the department question', () => {
+        expect(mapAnswers({ 'Name': 'A', 'Department / Branch': 'ECE' }).core).toEqual({ name: 'A', department: 'ECE' });
+    });
+
     it('flattens checkbox/grid answers and drops empty ones', () => {
         const { answers } = mapAnswers({ Workshops: ['AI', 'IoT'], Grid: [['a', 'b']], Empty: '', Nothing: null });
         expect(answers).toEqual({ Workshops: 'AI, IoT', Grid: 'a, b' });
@@ -83,8 +87,8 @@ describe('registrationTable', () => {
             { name: 'B', answers: { Food: 'Veg' } },
         ], (id) => ({ name: id === 'u1' ? 'Ravi' : '?', type: 'campus' }));
         expect(headers.slice(-2)).toEqual(['Size', 'Food']);
-        expect(rows[0].slice(6, 9)).toEqual(['Ravi', 'campus', 'Main website']);
-        expect(rows[1][6]).toBe('Direct');
+        expect(rows[0].slice(7, 10)).toEqual(['Ravi', 'campus', 'Main website']);
+        expect(rows[1][7]).toBe('Direct');
         expect(rows[1].slice(-2)).toEqual(['', 'Veg']);
     });
 });

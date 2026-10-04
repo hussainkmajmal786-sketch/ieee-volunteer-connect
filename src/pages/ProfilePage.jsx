@@ -9,6 +9,8 @@ import { useToast } from "../hooks/useToast";
 import { db, doc, updateDoc } from "../lib/firestore";
 import { apiForm } from "../lib/api";
 import { SOCIALS, safeUrl } from "../utils/links";
+import ComboBox from "../components/ComboBox";
+import { useDirectory } from "../hooks/useDirectory";
 
 const INPUT = "w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none";
 const YEARS = ["", "1st Year", "2nd Year", "3rd Year", "4th Year", "Postgraduate", "Alumni", "Faculty"];
@@ -39,6 +41,7 @@ export default function ProfilePage() {
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
     const loadedFor = useRef(user?.uid);
+    const { colleges, departments } = useDirectory();
 
     // Fill the form once the profile arrives (or the account changes).
     useEffect(() => {
@@ -135,8 +138,8 @@ export default function ProfilePage() {
                     <h2 className="font-bold text-gray-900 dark:text-white">About</h2>
                     <textarea className={`${INPUT} resize-none`} rows={4} value={form.bio} onChange={set("bio")} placeholder="A few lines about you, what you do and what you're looking for" aria-label="Bio" maxLength={1000} />
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <input className={INPUT} value={form.college} onChange={set("college")} placeholder="College" aria-label="College" maxLength={200} />
-                        <input className={INPUT} value={form.department} onChange={set("department")} placeholder="Department / Branch" aria-label="Department" maxLength={120} />
+                        <ComboBox inputClassName={INPUT} options={colleges} value={form.college} onChange={(college) => setForm(f => ({ ...f, college }))} placeholder="College" label="College" maxLength={200} />
+                        <ComboBox inputClassName={INPUT} options={departments} value={form.department} onChange={(department) => setForm(f => ({ ...f, department }))} placeholder="Department / Branch" label="Department" maxLength={120} />
                         <select className={INPUT} value={form.year} onChange={set("year")} aria-label="Year">
                             {YEARS.map(y => <option key={y} value={y}>{y || "Year…"}</option>)}
                         </select>

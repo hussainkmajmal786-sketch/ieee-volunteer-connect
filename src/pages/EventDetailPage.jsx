@@ -1,5 +1,7 @@
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn, ExternalLink, BookOpen } from "lucide-react";
+import ComboBox from "../components/ComboBox";
+import { useDirectory } from "../hooks/useDirectory";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -108,7 +110,8 @@ export default function EventDetailPage() {
     const [submitting, setSubmitting] = useState(false);
     const [copied, setCopied] = useState(false);
     const [regCount, setRegCount] = useState(0);
-    const [form, setForm] = useState({ name: '', email: '', phone: '', college: '', year: '1st Year' });
+    const [form, setForm] = useState({ name: '', email: '', phone: '', college: '', department: '', year: '1st Year' });
+    const { colleges, departments } = useDirectory();
     const [notifications, setNotifications] = useState([]);
     const [dismissedNotifs, setDismissedNotifs] = useState(new Set());
     const namedViewRef = useRef(null);
@@ -151,6 +154,7 @@ export default function EventDetailPage() {
             name: f.name || user.name || user.displayName || '',
             email: f.email || user.email || '',
             college: f.college || user.college || '',
+            department: f.department || user.department || '',
         }));
     }, [user]);
 
@@ -506,9 +510,19 @@ export default function EventDetailPage() {
                                             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
                                                 <Building2 className="w-3 h-3 inline mr-1" /> College / University
                                             </label>
-                                            <input type="text" placeholder="MIT, Stanford, etc." value={form.college}
-                                                onChange={(e) => setForm({ ...form, college: e.target.value })}
-                                                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none" required />
+                                            <ComboBox label="College / University" options={colleges} value={form.college} required
+                                                onChange={(college) => setForm(f => ({ ...f, college }))}
+                                                placeholder="Search or type your college"
+                                                inputClassName="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                                                <BookOpen className="w-3 h-3 inline mr-1" /> Department / Branch
+                                            </label>
+                                            <ComboBox label="Department / Branch" options={departments} value={form.department} maxLength={120}
+                                                onChange={(department) => setForm(f => ({ ...f, department }))}
+                                                placeholder="Search or type your department"
+                                                inputClassName="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">

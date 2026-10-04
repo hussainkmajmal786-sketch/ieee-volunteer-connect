@@ -16,3 +16,23 @@ describe("links", () => {
         expect(youtubeId("https://vimeo.com/1")).toBeNull();
     });
 });
+
+import { filterOptions } from "../src/utils/search.js";
+import { cleanList, COLLEGE_BRANCHES, DEPARTMENTS } from "../src/utils/constants.js";
+
+describe("college / department pickers", () => {
+    const opts = ["College of Engineering Kidangoor (CEK)", "Government Engineering College, Kottayam", "Saintgits College of Engineering, Kottayam"];
+    it("matches every word in any order, prefix matches first", () => {
+        expect(filterOptions(opts, "kottayam engineering")).toEqual([opts[1], opts[2]]);
+        expect(filterOptions(opts, "cek")).toEqual([opts[0]]);
+        expect(filterOptions(opts, "sAINT")).toEqual([opts[2]]);
+        expect(filterOptions(opts, "  ")).toBe(opts);
+    });
+    it("cleans editable lists", () => {
+        expect(cleanList([" A ", "a", "", "B", "Other (type it)", null])).toEqual(["A", "B"]);
+    });
+    it("default lists have no duplicates after cleaning", () => {
+        expect(cleanList(COLLEGE_BRANCHES).length).toBeGreaterThan(200);
+        expect(cleanList(DEPARTMENTS)).toContain("Computer Science and Engineering (CSE)");
+    });
+});

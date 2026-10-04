@@ -2,7 +2,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import Button from '../../Button';
-import { COLLEGE_BRANCHES } from '../../../utils/constants';
+import ComboBox from '../../ComboBox';
+import { useDirectory } from '../../../hooks/useDirectory';
 
 const VolunteerModal = ({
   showVolunteerModal,
@@ -12,6 +13,7 @@ const VolunteerModal = ({
   setNewVolunteer,
   creationError
 }) => {
+  const { colleges } = useDirectory();
   return (
     <AnimatePresence>
       {showVolunteerModal && (
@@ -90,18 +92,15 @@ const VolunteerModal = ({
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">College</label>
-                  <input
-                    type="text"
-                    list="vol-college-options"
-                    placeholder="Select or type college"
+                  <ComboBox
+                    label="College"
+                    options={colleges}
+                    placeholder="Search or type college"
                     value={newVolunteer.college}
-                    onChange={(e) => setNewVolunteer({ ...newVolunteer, college: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none"
+                    onChange={(college) => setNewVolunteer({ ...newVolunteer, college })}
+                    inputClassName="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none"
                     required
                   />
-                  <datalist id="vol-college-options">
-                    {COLLEGE_BRANCHES.map(c => <option key={c} value={c} />)}
-                  </datalist>
                 </div>
               </div>
               <div className="flex gap-3 pt-2">

@@ -338,3 +338,58 @@ export const COLLEGE_BRANCHES = [
     // ─── Other / Not Listed ───
     'Other (Type your college name)',
 ];
+
+// ─── DEPARTMENTS / BRANCHES ─────────────────────────────────
+// Default list for the department picker; the super admin can replace it
+// (Content Manager → Colleges & departments). People can still type their own.
+export const DEPARTMENTS = [
+    'Computer Science and Engineering (CSE)',
+    'Computer Science and Engineering (AI & ML)',
+    'Computer Science and Engineering (Data Science)',
+    'Computer Science and Engineering (Cyber Security)',
+    'Artificial Intelligence and Data Science (AI&DS)',
+    'Information Technology (IT)',
+    'Electronics and Communication Engineering (ECE)',
+    'Electrical and Electronics Engineering (EEE)',
+    'Electronics and Instrumentation Engineering (EIE)',
+    'Applied Electronics and Instrumentation (AEI)',
+    'Electronics and Computer Engineering',
+    'Robotics and Automation',
+    'Mechanical Engineering (ME)',
+    'Mechatronics Engineering',
+    'Automobile Engineering',
+    'Production Engineering',
+    'Civil Engineering (CE)',
+    'Chemical Engineering',
+    'Biomedical Engineering',
+    'Biotechnology',
+    'Food Technology',
+    'Aeronautical Engineering',
+    'Safety and Fire Engineering',
+    'Naval Architecture and Ship Building',
+    'Polymer Engineering',
+    'Architecture (B.Arch)',
+    'MCA — Computer Applications',
+    'MBA — Management Studies',
+    'M.Tech',
+    'BCA / B.Sc Computer Science',
+    'B.Sc / M.Sc (Science)',
+    'B.Com / BBA',
+    'Diploma (Polytechnic)',
+    'Other',
+];
+
+/** Normalise an editable list: trimmed, non-empty, no duplicates (ignoring case, punctuation and bracketed abbreviations). */
+export function cleanList(list) {
+    const seen = new Set();
+    const out = [];
+    for (const raw of list || []) {
+        const v = String(raw || '').trim();
+        // "College of Engineering, Kidangoor" = "College of Engineering Kidangoor (CEK)"
+        const key = v.toLowerCase().replace(/\([^)]*\)/g, '').replace(/[^a-z0-9]/g, '');
+        if (!v || seen.has(key) || /^other\b/i.test(v)) continue;
+        seen.add(key);
+        out.push(v);
+    }
+    return out;
+}
