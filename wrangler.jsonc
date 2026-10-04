@@ -30,8 +30,12 @@
     { "binding": "FILES_KV", "id": "7c000bf5c35d426f81e67af9ba2a543f" }
   ],
 
-  // Optional vars: BETTER_AUTH_URL (your site URL, e.g. https://ieee-volunteer-connect.<you>.workers.dev;
-  // inferred from the request when unset), PBKDF2_ITERATIONS (default 100000).
+  "vars": {
+    // Public site URL (used for Google sign-in redirects and reset links).
+    // Change it if you move to a custom domain.
+    "BETTER_AUTH_URL": "https://ieee-volunteer-connect.ieeesbcek.workers.dev"
+  },
+  // Optional var: PBKDF2_ITERATIONS (default 100000).
   // Secrets (set with `npx wrangler secret put <NAME>`):
   //   BETTER_AUTH_SECRET    required — any long random string
   //   GOOGLE_CLIENT_ID      optional — enables "Sign in with Google"
