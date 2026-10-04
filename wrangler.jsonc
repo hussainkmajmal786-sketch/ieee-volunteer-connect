@@ -1,0 +1,47 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ieee-volunteer-connect",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "account_id": "7a852bedf2056637d90bd9534e6cd7c1",
+
+  // The Vite build output; unknown paths fall back to index.html (SPA).
+  // /api/*, /files/* and /r/* (ambassador short links) always run the Worker.
+  "assets": {
+    "directory": "./build",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/files/*", "/r/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ieee-volunteer-connect",
+      "database_id": "a78e8150-dfd1-40fe-ad9f-c9b707e0f766",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Uploaded images. To use R2 instead (needs R2 enabled in the dashboard),
+  // add: "r2_buckets": [{ "binding": "FILES", "bucket_name": "ieee-volunteer-connect-files" }]
+  "kv_namespaces": [
+    { "binding": "FILES_KV", "id": "7c000bf5c35d426f81e67af9ba2a543f" }
+  ],
+
+  "vars": {
+    // Public site URL (used for Google sign-in redirects and reset links).
+    // Change it if you move to a custom domain.
+    "BETTER_AUTH_URL": "https://ieee-volunteer-connect.ieeesbcek.workers.dev"
+  },
+  // Optional var: PBKDF2_ITERATIONS (default 100000).
+  // Secrets (set with `npx wrangler secret put <NAME>`):
+  //   BETTER_AUTH_SECRET    required — any long random string
+  //   GOOGLE_CLIENT_ID      optional — enables "Sign in with Google"
+  //   GOOGLE_CLIENT_SECRET  optional
+  //   FIREBASE_API_KEY      lets migrated users sign in with their old password
+  //   RESEND_API_KEY        optional — enables "Forgot password" emails
+
+  "observability": { "enabled": true }
+}

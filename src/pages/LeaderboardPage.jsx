@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { db } from "../firebase/config";
-import { collection, query, orderBy, onSnapshot, where, deleteDoc, updateDoc, doc } from "firebase/firestore";
+import { db } from "../lib/backend";
+import { collection, query, orderBy, onSnapshot, where, deleteDoc, updateDoc, doc } from "../lib/firestore";
 import { getGrade, getNextGrade, getGradeProgress, GRADE_TIERS, getEarnedBadges } from "../utils/grades";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../hooks/useToast";

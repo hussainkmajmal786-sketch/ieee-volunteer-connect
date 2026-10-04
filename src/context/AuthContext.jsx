@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- co-locating context + hook with provider is intentional */
 import { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { authService } from "../services/authService";
+import { authClient } from "../lib/authClient";
 import { SUPER_ADMIN_EMAIL, ROLES } from "../utils/constants";
 
 export const AuthContext = createContext(null);
@@ -18,17 +19,18 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { data: session, isPending } = authClient.useSession();
+    const sessionUser = session?.user ?? null;
+    const [profile, setProfile] = useState({ uid: null, user: null });
 
+    // Follow the signed-in user's profile document (points, role… update live).
     useEffect(() => {
-        const unsubscribe = authService.subscribeToAuth((userData) => {
-            setUser(userData);
-            setLoading(false);
-        });
+        if (!sessionUser) return;
+        return authService.subscribeToProfile(sessionUser, (u) => setProfile({ uid: sessionUser.id, user: u }));
+    }, [sessionUser]);
 
-        return unsubscribe;
-    }, []);
+    const user = sessionUser && profile.uid === sessionUser.id ? profile.user : null;
+    const loading = isPending || (!!sessionUser && !user);
 
     const value = useMemo(() => {
         // Determine if the current user is the Super Admin
@@ -43,11 +45,12 @@ export function AuthProvider({ children }) {
             loading,
             isSuperAdmin,
             isAdmin,
-            loginWithGoogle: () => authService.loginWithGoogle(),
+            loginWithGoogle: (callbackURL) => authService.loginWithGoogle(callbackURL),
             loginWithEmail: (email, password) => authService.loginWithEmail(email, password),
             registerWithEmail: (name, email, password, college) => authService.registerWithEmail(name, email, password, college),
             logout: () => authService.logout(),
-            resetPassword: (email) => authService.resetPassword(email)
+            resetPassword: (email) => authService.resetPassword(email),
+            completePasswordReset: (token, password) => authService.completePasswordReset(token, password)
         };
     }, [user, loading]);
 

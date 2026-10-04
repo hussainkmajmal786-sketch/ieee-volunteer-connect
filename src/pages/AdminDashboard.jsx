@@ -4,11 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import Button from "../components/Button";
 import { useToast } from "../hooks/useToast";
 import { useAuth } from "../context/AuthContext";
-import { db } from "../firebase/config";
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, setDoc, getDocs, getDoc, increment, serverTimestamp } from "firebase/firestore";
-import { uploadImage as uploadToStorage } from '../utils/firebaseUpload';
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { initializeApp, deleteApp } from "firebase/app";
+import { db } from "../lib/backend";
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, getDocs, getDoc, increment, serverTimestamp, deleteField } from "../lib/firestore";
+import { uploadImage as uploadToStorage } from '../utils/upload';
+import { api } from "../lib/api";
 import { getCroppedImg } from '../utils/cropImage';
 import { ROLES, COLLEGE_BRANCHES } from '../utils/constants';
 
@@ -26,6 +25,8 @@ import TaskList from '../components/admin/TaskList';
 import TeamList from '../components/admin/TeamList';
 import RewardList from '../components/admin/RewardList';
 import LinkTrackingPanel from '../components/admin/LinkTrackingPanel';
+import AmbassadorMonitor from '../components/admin/AmbassadorMonitor';
+import AmbassadorProgram from '../components/admin/AmbassadorProgram';
 import ContentManager from '../components/admin/ContentManager';
 
 // Modals
@@ -50,7 +51,7 @@ export default function AdminDashboard() {
     const [showRegistrationsModal, setShowRegistrationsModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentEventId, setCurrentEventId] = useState(null);
-    const [newEvent, setNewEvent] = useState({ name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '' });
+    const [newEvent, setNewEvent] = useState({ name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '', linkMode: 'site', externalUrl: '' });
     const [newVolunteer, setNewVolunteer] = useState({ name: '', email: '', password: '', branch: 'IEEE Student Branch', college: '' });
     const [creationError, setCreationError] = useState('');
     const [imageFile, setImageFile] = useState(null);
@@ -210,31 +211,14 @@ export default function AdminDashboard() {
         e.preventDefault();
         setCreationError('');
         try {
-            const firebaseConfig = {
-                apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-                authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-                projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-                storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-                messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-                appId: import.meta.env.VITE_FIREBASE_APP_ID
-            };
-            const secondaryApp = initializeApp(firebaseConfig, "Secondary" + Date.now());
-            const secondaryAuth = getAuth(secondaryApp);
-            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, newVolunteer.email, newVolunteer.password);
-            await setDoc(doc(db, "users", userCredential.user.uid), {
-                uid: userCredential.user.uid,
+            // The Worker creates the login and profile without touching this admin session.
+            await api('/api/admin/users', {
                 name: newVolunteer.name,
                 email: newVolunteer.email,
-                role: "VOLUNTEER",
+                password: newVolunteer.password,
                 branch: newVolunteer.branch,
-                college: newVolunteer.college || newVolunteer.branch,
-                points: 0,
-                tasksCompleted: 0,
-                shares: 0,
-                createdAt: new Date().toISOString()
+                college: newVolunteer.college,
             });
-            await secondaryAuth.signOut();
-            await deleteApp(secondaryApp);
             closeVolunteerModal();
             addToast('Volunteer account created!', 'success');
         } catch (error) {
@@ -260,7 +244,13 @@ export default function AdminDashboard() {
         setShowRegistrationsModal(true);
         try {
             const regsSnap = await getDocs(collection(db, "events", eventId, "registrations"));
-            const regsData = regsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const regsData = regsSnap.docs.map(d => {
+                const data = d.data();
+                const referrer = data.referredBy
+                    ? (volunteers.find(v => v.id === data.referredBy || v.uid === data.referredBy)?.name || data.referrerName || 'Unknown ambassador')
+                    : '';
+                return { id: d.id, ...data, referrer };
+            });
             regsData.sort((a, b) => (b.registeredAt?.toDate?.() || new Date(b.registeredAt)) - (a.registeredAt?.toDate?.() || new Date(a.registeredAt)));
             setRegistrations(regsData);
         } catch (error) {
@@ -273,8 +263,8 @@ export default function AdminDashboard() {
 
     const exportRegistrations = () => {
         if (registrations.length === 0) return;
-        const headers = ['Name', 'Email', 'Phone', 'College', 'Year', 'Registered At'];
-        const csvRows = [headers.join(','), ...registrations.map(r => [`"${r.name || ''}"`, `"${r.email || ''}"`, `"${r.phone || ''}"`, `"${r.college || ''}"`, `"${r.year || ''}"`, `"${r.registeredAt?.toDate ? r.registeredAt.toDate().toLocaleString() : new Date(r.registeredAt).toLocaleString()}"`].join(','))];
+        const headers = ['Name', 'Email', 'Phone', 'College', 'Year', 'Referred By', 'Registered At'];
+        const csvRows = [headers.join(','), ...registrations.map(r => [`"${r.name || ''}"`, `"${r.email || ''}"`, `"${r.phone || ''}"`, `"${r.college || ''}"`, `"${r.year || ''}"`, `"${r.referrer || ''}"`, `"${r.registeredAt?.toDate ? r.registeredAt.toDate().toLocaleString() : new Date(r.registeredAt).toLocaleString()}"`].join(','))];
         const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -440,7 +430,9 @@ export default function AdminDashboard() {
             venue: event.venue, 
             desc: event.desc, 
             category: event.category || 'Workshop', 
-            imageUrl: event.imageUrl || '' 
+            imageUrl: event.imageUrl || '',
+            linkMode: event.linkMode || 'site',
+            externalUrl: event.externalUrl || ''
         });
         if (event.imageUrl) setImagePreview(event.imageUrl);
         setShowModal(true);
@@ -449,7 +441,7 @@ export default function AdminDashboard() {
     const closeModal = () => {
         setShowModal(false);
         setIsEditing(false);
-        setNewEvent({ name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '' });
+        setNewEvent({ name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '', linkMode: 'site', externalUrl: '' });
         setImageFile(null); 
         setImagePreview(null); 
         setCrop({ unit: '%', width: 100, aspect: 16 / 9 });
@@ -513,6 +505,26 @@ export default function AdminDashboard() {
     };
 
     // ── SUPER ADMIN ONLY: Promote to Sub Admin ──
+    const handleToggleCampusAmbassador = async (vol) => {
+        if (!isSuperAdmin) return;
+        const making = vol.ambassadorType !== 'campus';
+        if (!window.confirm(making ? `Make "${vol.name}" a Campus Ambassador?` : `Remove "${vol.name}" as Campus Ambassador?`)) return;
+        try {
+            // Ambassadors need an active volunteer account to see their dashboard tools.
+            const activate = making ? {
+                approvalStatus: 'ACTIVE',
+                ...(vol.role === ROLES.STUDENT || !vol.role ? { role: ROLES.VOLUNTEER } : {}),
+            } : {};
+            await updateDoc(doc(db, "users", vol.id), making
+                ? { ambassadorType: 'campus', campusAmbassadorId: deleteField(), campusAmbassadorName: deleteField(), ...activate }
+                : { ambassadorType: deleteField() });
+            addToast(making ? `"${vol.name}" is now a Campus Ambassador` : `"${vol.name}" is no longer a Campus Ambassador`, 'success');
+        } catch (err) {
+            console.error(err);
+            addToast('Failed to update ambassador status', 'error');
+        }
+    };
+
     const handlePromoteToAdmin = async (id, name) => {
         if (!isSuperAdmin) return;
         if (window.confirm(`Promote "${name}" to Sub Admin?`)) {
@@ -671,6 +683,7 @@ export default function AdminDashboard() {
                             handleResetPoints={handleResetPoints}
                             handlePromoteToAdmin={handlePromoteToAdmin}
                             handleDemoteAdmin={handleDemoteAdmin}
+                            handleToggleCampusAmbassador={handleToggleCampusAmbassador}
                         />
                     </div>
                 </div>
@@ -694,12 +707,19 @@ export default function AdminDashboard() {
                     <LinkTrackingPanel volunteers={scopedVolunteers} events={events} />
                 </div>
 
+                {/* ── Ambassador referral funnel ── */}
+                <AmbassadorMonitor events={events} volunteers={volunteers} />
+
+                {/* ── Campus / Class ambassadors (super admin) ── */}
+                {isSuperAdmin && <AmbassadorProgram users={volunteers} />}
+
                 {/* ── Super Admin Content Manager ── */}
                 {isSuperAdmin && <ContentManager />}
             </div>
 
             {/* Modals Container */}
             <EventModal
+                isSuperAdmin={isSuperAdmin}
                 showModal={showModal}
                 closeModal={closeModal}
                 isEditing={isEditing}

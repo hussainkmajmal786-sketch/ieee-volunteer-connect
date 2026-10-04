@@ -1,6 +1,6 @@
-import { collection, query, orderBy, limit, onSnapshot, getCountFromServer, getDocs, where } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { db, functions } from "../firebase/config";
+import { collection, query, orderBy, limit, onSnapshot, getCountFromServer, getDocs, where } from "../lib/firestore";
+import { httpsCallable } from "../lib/functions";
+import { db, functions } from "../lib/backend";
 
 function getDeviceType() {
     const ua = navigator.userAgent;
@@ -16,6 +16,21 @@ function getOrCreateSession() {
         sessionStorage.setItem('_vc_sid', sid);
     }
     return sid;
+}
+
+// Survives across tabs and visits so an ambassador's unique-visitor count
+// isn't inflated by the same person reopening the link.
+function getOrCreateVisitorId() {
+    try {
+        let vid = localStorage.getItem('_vc_vid');
+        if (!vid) {
+            vid = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+            localStorage.setItem('_vc_vid', vid);
+        }
+        return vid;
+    } catch {
+        return null;
+    }
 }
 
 function deriveSource(referrer, utmSource) {
@@ -63,6 +78,7 @@ export const trackingService = {
                 eventName: data.eventName || null,
                 refId: params.get('ref') || data.refId || null,
                 sessionId: getOrCreateSession(),
+                visitorId: getOrCreateVisitorId(),
                 device: getDeviceType(),
             });
         } catch { /* tracking must never break the app */ }

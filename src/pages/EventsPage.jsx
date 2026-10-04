@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Calendar, MapPin, Users, Search, Copy, Check, Share2, Image, ArrowUpDown } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
-import { db } from "../firebase/config";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "../lib/backend";
+import { collection, query, orderBy, onSnapshot } from "../lib/firestore";
 import { useToast } from "../hooks/useToast";
 import MetaTags from "../shared/MetaTags";
 

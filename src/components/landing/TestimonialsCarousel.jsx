@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
-import { db } from "../../firebase/config";
-import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
+import { db } from "../../lib/backend";
+import { collection, onSnapshot, query, orderBy, limit } from "../../lib/firestore";
 
 const STATIC = [
     { id: "t1", name: "Priya Sharma", role: "Branch Chair", college: "IIT Delhi", text: "IEEE Connect transformed how we manage our 500+ member branch. Volunteer engagement jumped 3x in a single semester.", avatar: "P", gradient: "from-amber-400 to-yellow-300" },

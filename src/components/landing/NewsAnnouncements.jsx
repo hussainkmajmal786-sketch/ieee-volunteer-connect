@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { Newspaper, GraduationCap, Trophy, Briefcase, Megaphone, ChevronRight, X, Calendar, ArrowRight } from "lucide-react";
-import { db } from "../../firebase/config";
-import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
+import { db } from "../../lib/backend";
+import { collection, onSnapshot, query, orderBy, limit } from "../../lib/firestore";
 
 const TAG_CONFIG = {
     Hackathon: { icon: Trophy, color: "text-amber-500", bg: "bg-amber-500" },

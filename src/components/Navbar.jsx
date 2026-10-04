@@ -85,6 +85,8 @@ export default function Navbar() {
     }
 
     const isActive = (path) => location.pathname === path;
+    // Return visitors to the event they were viewing (keeps ?ref= attribution).
+    const authReturnState = /^\/(event\/|ambassador\/)/.test(location.pathname) ? { from: location } : undefined;
     const userInitial = user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "?";
 
     const handleSignOut = async () => {
@@ -222,7 +224,7 @@ export default function Navbar() {
                                     </AnimatePresence>
                                 </div>
                             ) : (
-                                <Link to="/auth" className="btn-primary text-sm !py-2 !px-5">Login / Sign Up</Link>
+                                <Link to="/auth" state={authReturnState} className="btn-primary text-sm !py-2 !px-5">Login / Sign Up</Link>
                             )}
                         </div>
                     </div>
@@ -289,7 +291,7 @@ export default function Navbar() {
                                         <LogOut size={18} /> Sign Out
                                     </button>
                                 ) : (
-                                    <Link to="/auth" className="btn-primary block text-center w-full">Login / Sign Up</Link>
+                                    <Link to="/auth" state={authReturnState} className="btn-primary block text-center w-full">Login / Sign Up</Link>
                                 )}
                             </div>
                         </div>

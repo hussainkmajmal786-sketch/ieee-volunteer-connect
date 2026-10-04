@@ -1,33 +1,29 @@
-import { logEvent as firebaseLogEvent } from "firebase/analytics";
-import { analytics } from "../firebase/config";
-
 /**
- * Google Analytics integration via Firebase.
- * Usage: Initialize is handled by Firebase config. This utility provides wrapper functions.
+ * Google Analytics 4 via gtag.js (production only).
+ * Set VITE_GA_MEASUREMENT_ID (format G-XXXXXXXXXX) to enable.
  */
+const MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
+const enabled = typeof window !== "undefined" && !import.meta.env.DEV && !!MEASUREMENT_ID;
+let initialized = false;
 
 export const initGA = () => {
-    // Initialization is now handled automatically by Firebase Analytics in config.js
-    // We keep this function to prevent breaking App.jsx, but we can just log it.
-    if (analytics) {
-        console.log("[Analytics] Firebase GA4 Initialized");
-    } else if (import.meta.env.DEV) {
-        console.log("[Analytics] Firebase GA4 disabled in development mode to prevent cookie warnings.");
-    } else {
-        console.warn("[Analytics] Firebase GA4 failed to initialize.");
-    }
+    if (!enabled || initialized) return;
+    initialized = true;
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function gtag() { window.dataLayer.push(arguments); };
+    window.gtag("js", new Date());
+    // Page views are sent manually on route changes.
+    window.gtag("config", MEASUREMENT_ID, { send_page_view: false });
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`;
+    document.head.appendChild(script);
 };
 
 export const logPageView = (path) => {
-    if (analytics) {
-        firebaseLogEvent(analytics, 'page_view', {
-            page_path: path,
-        });
-    }
+    if (enabled && window.gtag) window.gtag("event", "page_view", { page_path: path });
 };
 
 export const logEvent = (action, params) => {
-    if (analytics) {
-        firebaseLogEvent(analytics, action, params);
-    }
+    if (enabled && window.gtag) window.gtag("event", action, params);
 };

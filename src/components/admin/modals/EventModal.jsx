@@ -1,11 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, Clock, MapPin } from 'lucide-react';
+import { X, Upload, Clock, MapPin, Link2, Globe, Home } from 'lucide-react';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import Button from '../../Button';
 
 const EventModal = ({
+  isSuperAdmin = false,
   showModal,
   closeModal,
   isEditing,
@@ -164,6 +165,49 @@ const EventModal = ({
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none resize-none"
                 />
               </div>
+              {/* Where ambassador links send people — super admin only */}
+              {isSuperAdmin && (
+                <div className="rounded-2xl border border-ieee-blue/20 bg-ieee-blue/5 dark:bg-cyan-900/10 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    <Link2 className="w-4 h-4 text-ieee-blue" /> Where should shared links go?
+                  </p>
+                  <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Shared link destination">
+                    {[
+                      { value: 'site', label: 'This website', hint: 'Register here — fully tracked', icon: Home },
+                      { value: 'external', label: 'Main website', hint: 'Clicks tracked, then redirected', icon: Globe },
+                    ].map(opt => {
+                      const active = (newEvent.linkMode || 'site') === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => setNewEvent({ ...newEvent, linkMode: opt.value })}
+                          className={`text-left p-3 rounded-xl border transition ${active ? 'border-ieee-blue bg-white dark:bg-gray-800 shadow-sm' : 'border-gray-200 dark:border-gray-700 hover:border-ieee-blue/50'}`}
+                        >
+                          <span className="flex items-center gap-1.5 text-sm font-bold text-gray-900 dark:text-white"><opt.icon className="w-4 h-4 text-ieee-blue" /> {opt.label}</span>
+                          <span className="block text-[11px] text-gray-500 mt-0.5">{opt.hint}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {newEvent.linkMode === 'external' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Registration page on the main website</label>
+                      <input
+                        type="url"
+                        placeholder="https://ieee.cek.ac.in/events/..."
+                        value={newEvent.externalUrl || ''}
+                        onChange={(e) => setNewEvent({ ...newEvent, externalUrl: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none"
+                        required
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1">Registrations happen on that site, so only clicks and unique visitors are counted here.</p>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={closeModal} className="flex-1">Cancel</Button>
                 <Button type="submit" isLoading={uploading} className="flex-1">{isEditing ? 'Save Changes' : 'Create Event'}</Button>

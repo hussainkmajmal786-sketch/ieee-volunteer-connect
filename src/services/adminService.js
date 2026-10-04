@@ -1,19 +1,17 @@
-import { db } from "../firebase/config";
+import { db } from "../lib/backend";
 import {
     collection,
     doc,
     addDoc,
     deleteDoc,
     updateDoc,
-    setDoc,
     getDoc,
     getDocs,
     increment,
     serverTimestamp,
     arrayUnion,
-} from "firebase/firestore";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { initializeApp, deleteApp } from "firebase/app";
+} from "../lib/firestore";
+import { api } from "../lib/api";
 
 /**
  * Admin Service
@@ -56,40 +54,9 @@ class AdminService {
 
     // ─── VOLUNTEERS / USERS ──────────────────────────────────
 
-    /**
-     * Create a volunteer account using a secondary Firebase App
-     * so the current admin session is preserved.
-     */
-    async createVolunteer(volunteerData, firebaseConfig) {
-        const secondaryApp = initializeApp(firebaseConfig, "Secondary" + Date.now());
-        const secondaryAuth = getAuth(secondaryApp);
-
-        try {
-            const cred = await createUserWithEmailAndPassword(
-                secondaryAuth,
-                volunteerData.email,
-                volunteerData.password
-            );
-
-            await setDoc(doc(db, "users", cred.user.uid), {
-                uid: cred.user.uid,
-                name: volunteerData.name,
-                email: volunteerData.email,
-                role: "VOLUNTEER",
-                branch: volunteerData.branch,
-                college: volunteerData.college || volunteerData.branch,
-                points: 0,
-                tasksCompleted: 0,
-                shares: 0,
-                badges: [],
-                createdAt: new Date().toISOString(),
-            });
-
-            await secondaryAuth.signOut();
-            return cred.user;
-        } finally {
-            await deleteApp(secondaryApp);
-        }
+    /** Create a volunteer account (server-side, keeps the admin signed in). */
+    async createVolunteer(volunteerData) {
+        return await api("/api/admin/users", volunteerData);
     }
 
     async updateUserRole(userId, role) {

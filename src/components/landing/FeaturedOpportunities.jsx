@@ -2,8 +2,8 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { MapPin, Clock, Wifi, WifiOff, ChevronRight, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { db } from "../../firebase/config";
-import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
+import { db } from "../../lib/backend";
+import { collection, onSnapshot, query, orderBy, limit } from "../../lib/firestore";
 import { useAuth } from "../../context/AuthContext";
 
 const FILTERS = ["All", "Technical", "Design", "Content", "Web Development", "Event Management", "Robotics"];

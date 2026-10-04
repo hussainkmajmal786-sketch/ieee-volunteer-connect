@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, PlusCircle, Search, Crown, X, CheckCircle, Trash2, RotateCcw, Shield, ShieldOff } from 'lucide-react';
+import { Users, PlusCircle, Search, Crown, X, CheckCircle, Trash2, RotateCcw, Shield, ShieldOff, Megaphone } from 'lucide-react';
 import { getGrade, getEarnedBadges } from '../../utils/grades';
 import { ROLES } from '../../utils/constants';
 
@@ -17,6 +17,7 @@ const VolunteerList = ({
   handleResetPoints,
   handlePromoteToAdmin,
   handleDemoteAdmin,
+  handleToggleCampusAmbassador,
 }) => {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -73,6 +74,16 @@ const VolunteerList = ({
                       {isAdmin && !isSuperAdminUser && (
                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 uppercase tracking-tighter border border-violet-200/50 dark:border-violet-800/30">
                           🔑 Sub Admin
+                        </span>
+                      )}
+                      {vol.ambassadorType === 'campus' && (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 uppercase tracking-tighter border border-sky-200/50 dark:border-sky-800/30">
+                          📣 Campus Amb.
+                        </span>
+                      )}
+                      {vol.ambassadorType === 'class' && (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 uppercase tracking-tighter border border-indigo-200/50 dark:border-indigo-800/30" title={vol.campusAmbassadorName ? `Under ${vol.campusAmbassadorName}` : undefined}>
+                          🎓 Class Amb.
                         </span>
                       )}
                       {vol.approvalStatus === 'PENDING' && (
@@ -132,6 +143,11 @@ const VolunteerList = ({
                             <Shield className="w-4 h-4" />
                           </button>
                         ) : null}
+
+                        {/* Campus Ambassador on/off */}
+                        <button onClick={() => handleToggleCampusAmbassador(vol)} className={`p-1.5 rounded-lg transition ${vol.ambassadorType === 'campus' ? 'text-sky-600 bg-sky-50 dark:bg-sky-900/20' : 'text-sky-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20'}`} title={vol.ambassadorType === 'campus' ? 'Remove Campus Ambassador' : 'Make Campus Ambassador'} aria-label={vol.ambassadorType === 'campus' ? `Remove ${vol.name} as Campus Ambassador` : `Make ${vol.name} a Campus Ambassador`}>
+                          <Megaphone className="w-4 h-4" />
+                        </button>
 
                         {/* Reset Points */}
                         {(vol.points || 0) > 0 && (

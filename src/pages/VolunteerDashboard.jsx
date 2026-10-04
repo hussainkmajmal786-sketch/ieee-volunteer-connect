@@ -3,11 +3,14 @@ import { Award, Share2, CheckCircle, Clock, Calendar, ChevronRight, Copy, Check,
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { db } from "../firebase/config";
-import { doc, updateDoc, collection, query, onSnapshot, arrayUnion, increment } from "firebase/firestore";
+import { db } from "../lib/backend";
+import { doc, updateDoc, collection, query, onSnapshot, arrayUnion, increment } from "../lib/firestore";
 import Button from "../components/Button";
 import { useToast } from "../hooks/useToast";
 import { getGrade, getNextGrade, getGradeProgress, getEarnedBadges, BADGES } from "../utils/grades";
+import { buildReferralLink } from "../utils/referral";
+import ReferralStatsPanel from "../components/ReferralStatsPanel";
+import AmbassadorPanel from "../components/AmbassadorPanel";
 
 export default function VolunteerDashboard() {
     const { user } = useAuth();
@@ -145,7 +148,7 @@ export default function VolunteerDashboard() {
 
     const copyLink = async (eventId, eventName) => {
         // Generate a personal referral link with the volunteer's UID
-        const url = `${window.location.origin}/event/${eventId}?ref=${user.uid}`;
+        const url = buildReferralLink(window.location.origin, eventId, user.uid);
         try {
             await navigator.clipboard.writeText(url);
         } catch {
@@ -337,6 +340,8 @@ export default function VolunteerDashboard() {
                 </div>
             </div>
 
+            <AmbassadorPanel user={user} />
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Tasks */}
                 <div className="lg:col-span-2">
@@ -434,6 +439,8 @@ export default function VolunteerDashboard() {
                             })}
                         </div>
                     )}
+
+                    <ReferralStatsPanel user={user} events={events} />
                 </div>
 
                 {/* Sidebar */}

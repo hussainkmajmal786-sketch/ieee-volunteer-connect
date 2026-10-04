@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PlusCircle, Trash2, X, Sparkles, FolderOpen, BookOpen, Cpu, MessageSquare, Building, Newspaper, CheckCircle, XCircle, Clock, FileText, Send, Link2, ExternalLink, Star } from "lucide-react";
-import { db } from "../../firebase/config";
-import { collection, onSnapshot, query, orderBy, doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../../lib/backend";
+import { collection, onSnapshot, query, orderBy, doc, getDoc, updateDoc, serverTimestamp } from "../../lib/firestore";
 import { adminService } from "../../services/adminService";
 import { useToast } from "../../hooks/useToast";
 

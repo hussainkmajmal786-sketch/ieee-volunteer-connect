@@ -2,17 +2,19 @@
 
 A volunteer management platform for IEEE student branches — events, tasks, points, leaderboards, and admin tooling in one place.
 
-**Live:** [ieee-vc-cek-main.web.app](https://ieee-vc-cek-main.web.app)
+**Hosting:** Cloudflare Workers (site + API) · D1 (database) · KV (images)
 
 ---
 
 ## Features
 
 - **Events** — Public event listing with categories, search, real-time updates, registration with duplicate detection, countdown timers, and per-event analytics.
-- **Volunteer dashboard** — Personal task list, points display, referral link generation with click tracking, auto-completion when referral targets are hit, and badge progression.
-- **Admin dashboard** — Full CRUD over events, volunteers, tasks, teams, and rewards. Live analytics, link-tracking panel, image uploads with cropping (Firebase Storage), participant analytics, and registration management.
+- **Volunteer dashboard** — Personal task list, points display, personal referral links, "My Referral Performance" (clicks → unique visitors → registrations, and who registered), auto-completion when referral targets are hit, and badge progression.
+- **Admin dashboard** — Full CRUD over events, volunteers, tasks, teams, and rewards. Live analytics, link-tracking panel, Ambassador Monitor (per-ambassador funnel with registrant details + CSV), image uploads with cropping, participant analytics, and registration management.
+- **Ambassador program** — Campus Ambassadors (set by the super admin) recruit Class Ambassadors through a personal application form; applications reach the campus ambassador and the super admin, who approves them. The super admin can notify campus ambassadors, class ambassadors, both, or chosen people.
+- **Tracked short links** — ambassador links (`/r/<event>/<ambassador>`) are counted server-side and lead either to this site's registration or to the event's main-website page (super admin's choice per event).
 - **Leaderboard** — Public rankings by points with grade tiers and badge display.
-- **Auth** — Email/password, Google OAuth, password reset. Role-based access (`STUDENT` → `VOLUNTEER` → `ADMIN` → `SUPER_ADMIN`).
+- **Auth** — Email/password, Google sign-in, password reset (Better Auth). Role-based access (`STUDENT` → `VOLUNTEER` → `ADMIN` → `SUPER_ADMIN`).
 - **PWA** — Installable, offline page, service worker.
 - **Notifications** — Real-time bell with unread state.
 
@@ -22,32 +24,36 @@ A volunteer management platform for IEEE student branches — events, tasks, poi
 
 | Layer | Tooling |
 |---|---|
-| Frontend | React 19 · Vite 7 · React Router 7 |
-| Styling | Tailwind CSS 3 · custom design system (glassmorphism, IEEE blue) |
-| Motion | framer-motion 12 |
-| Backend | Firebase Firestore · Firebase Auth |
-| File uploads | Firebase Storage |
-| Forms / validation | zod |
-| Hosting | Firebase Hosting |
-| Analytics | Google Analytics 4 |
+| Frontend | React 19 · Vite 7 · React Router 7 · Tailwind CSS 3 · framer-motion |
+| Backend | Cloudflare Worker (`worker/`) with Hono |
+| Database | Cloudflare D1 — a Firestore-style document store (`docs` table) |
+| Auth | Better Auth on D1 (email/password + Google) |
+| Images | Workers KV (or R2 if you enable it) |
+| Live updates | Batched version polling (`src/lib/firestore.js`) |
+| Analytics | Google Analytics 4 (optional) |
+
+The frontend keeps Firestore-style calls (`collection`, `doc`, `onSnapshot`, `updateDoc`, …) via `src/lib/firestore.js`, which talks to `/api/db/*`. Every read and write is checked by `worker/rules.js` (a port of the old Firestore rules).
 
 ---
 
-## Getting started
+## Getting started (local)
 
 ```bash
-# 1. Install
 npm install
-
-# 2. Configure environment
-cp .env.example .env.local
-# Fill in your Firebase keys
-
-# 3. Run dev server
-npm run dev
+npm run db:migrate:local      # create the local D1 tables
+npm run build                 # the Worker serves ./build
+npm run dev:api               # Worker + D1 on http://localhost:8787
+npm run dev                   # (optional) Vite with hot reload on :5173, proxies /api
 ```
 
-App runs at `http://localhost:5173`.
+Create `.dev.vars` for local secrets:
+
+```
+BETTER_AUTH_SECRET=any-long-random-string
+BETTER_AUTH_URL=http://localhost:8787
+```
+
+Make yourself an admin after signing up: `npm run make-admin -- you@example.com SUPER_ADMIN --local`
 
 ---
 
@@ -55,85 +61,71 @@ App runs at `http://localhost:5173`.
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Start Vite dev server with HMR |
+| `npm run dev` / `npm run dev:api` | Vite dev server / local Worker + D1 |
 | `npm run build` | Production build → `build/` |
-| `npm run preview` | Serve the production build locally |
-| `npm run lint` | ESLint over the project |
-| `npm run test:rules` | Run Firestore rules unit tests (requires Java + Firebase emulator) |
+| `npm run deploy` | Build, apply D1 migrations, deploy the Worker |
+| `npm test` | Unit tests (rules, document store, client) |
+| `npm run lint` | ESLint |
+| `npm run migrate:firebase` | One-time import from the old Firebase project |
+| `npm run make-admin -- email [ROLE]` | Set a user's role (default SUPER_ADMIN) |
 
 ---
 
-## Environment variables
+## Deploy to Cloudflare
 
-Required in `.env.local`:
-
-```
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-VITE_CLOUDINARY_CLOUD_NAME=
-VITE_CLOUDINARY_UPLOAD_PRESET=
+```bash
+npx wrangler login
+npx wrangler secret put BETTER_AUTH_SECRET     # any long random string
+npm run deploy
 ```
 
-See `.env.example` for the template.
+Optional secrets: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (Google sign-in; redirect URI `https://<your-site>/api/auth/callback/google`), `FIREBASE_API_KEY` (lets migrated users sign in with their old password), `RESEND_API_KEY` (password-reset emails). Set `BETTER_AUTH_URL` to your site URL under `vars` in `wrangler.jsonc` once it is known.
+
+GitHub Actions (`.github/workflows/deploy.yml`) lints, tests and builds every PR, and deploys `main` when the `CLOUDFLARE_API_TOKEN` repo secret is set.
+
+## Migrating from Firebase
+
+1. Firebase console → Project settings → Service accounts → **Generate new private key**; save it as `service-account.json` in the project folder (it is git-ignored).
+2. `npm run migrate:firebase` — copies Firestore (incl. sub-collections), Auth users and Storage images into D1/KV. Safe to re-run.
+3. `npx wrangler secret put FIREBASE_API_KEY` — your old Firebase web API key, so email/password users can sign in with their existing password (it is re-saved on Cloudflare at first sign-in).
+
+User IDs are preserved, so points, referrals and registrations stay linked.
 
 ---
 
 ## Project structure
 
 ```
+worker/                 # Cloudflare Worker (API)
+├── index.js            # routes: /api/auth, /api/db, /api/fn, /api/upload, /files
+├── rules.js            # access rules (port of firestore.rules + storage.rules)
+├── docstore.js         # document store on D1
+├── auth.js, password.js
+├── functions.js        # registerForEvent, recordLinkClick
+└── files.js            # KV/R2 image storage
+migrations/             # D1 schema
 src/
-├── App.jsx                 # Router + lazy routes
-├── main.jsx                # React entrypoint
-├── pages/                  # 8 top-level pages
-│   ├── LandingPage.jsx     # Hero3D, live events, animated counters
-│   ├── AuthPage.jsx        # Login / register / reset
-│   ├── EventsPage.jsx
-│   ├── EventDetailPage.jsx
-│   ├── VolunteerDashboard.jsx
-│   ├── AdminDashboard.jsx  # CRUD + analytics
-│   ├── LeaderboardPage.jsx
-│   └── NotFoundPage.jsx
-├── components/             # Shared UI
-│   ├── admin/              # Admin widgets + modals
-│   └── Hero3D, Navbar, Footer, Toast, ...
-├── context/                # AuthContext, ToastContext
-├── services/               # eventService, authService, adminService, trackingService
-├── hooks/                  # useAuth, useTheme, useToast, useTracking
-├── shared/                 # MetaTags, OptimizedImage, Skeleton
-├── utils/                  # constants, validation, analytics, firebaseUpload, ...
-└── firebase/config.js      # Firebase SDK initialization
+├── lib/                # firestore.js (client), authClient.js, api.js, functions.js
+├── pages/, components/, services/, context/, hooks/, utils/
+scripts/                # migrate-from-firebase.mjs, make-admin.mjs
+tests/                  # vitest suites
 ```
 
 ---
 
 ## Security model
 
-Firestore rules (`firestore.rules`) enforce role-based access:
+`worker/rules.js` enforces role-based access on every request (tested in `tests/worker.rules.test.js`):
 
-- **Events** — public read · admin write
-- **Users** — authenticated read · self-signup constrained to `role: STUDENT`, `points: 0`, `approvalStatus: PENDING` (no privilege escalation) · self-update cannot grant ADMIN/SUPER_ADMIN
-- **Tasks / Teams / Rewards / Claims** — admin write · authenticated read
-- **linkClicks** — public create (anonymous tracking) · admin read · immutable
+- **Events** — public read · admin write · signed-in users may only move `participants` by ±1
+- **Registrations** — created only by the server endpoint · readable by admins and volunteers
+- **Users** — signed-in read · self-signup only as `STUDENT` with 0 points · no self-promotion to ADMIN/SUPER_ADMIN
+- **linkClicks / referralVisits** — server-written · admin read
+- **inbox** — each user reads only their own messages · written by the server
+- **ambassadorApplications** — campus ambassadors read their own recruits, applicants their own · approvals by the super admin only
+- **Event link destination, ambassador roles, form settings** — super admin only
+- **Uploads** — admins only, JPEG/PNG/WebP/GIF under 5 MB, fixed folders
 - **Default** — deny
-
-Rules are covered by unit tests in `tests/firestore.rules.test.js`.
-
----
-
-## Deployment
-
-Firebase handles hosting, database (Firestore), auth, and security rules.
-
-```bash
-npm run build
-firebase deploy --only hosting,firestore
-```
-
-GitHub Actions workflow (`.github/workflows/deploy.yml`) auto-deploys to Firebase Hosting on push to `main`.
 
 ---
 

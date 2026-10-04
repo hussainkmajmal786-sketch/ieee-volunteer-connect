@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { FileText, Presentation, Palette, BookOpen, Wrench, Award, Download, Search, Lock } from "lucide-react";
-import { db } from "../firebase/config";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { db } from "../lib/backend";
+import { collection, onSnapshot, query, orderBy } from "../lib/firestore";
 import MetaTags from "../shared/MetaTags";
 
 const ICON_MAP = { "Event Templates": FileText, "Presentation Kits": Presentation, "Design Assets": Palette, "IEEE Branding Guide": BookOpen, "Workshop Kits": Wrench, "Certificate Templates": Award };

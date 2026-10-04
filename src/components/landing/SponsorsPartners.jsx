@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { db } from "../../firebase/config";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { db } from "../../lib/backend";
+import { collection, onSnapshot, query, orderBy } from "../../lib/firestore";
 
 const STATIC = [
     { id: "s1", name: "IEEE", logo: "IEEE" },

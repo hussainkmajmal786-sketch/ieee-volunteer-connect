@@ -26,7 +26,7 @@ const RegistrationsModal = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 w-full max-w-3xl overflow-hidden max-h-[85vh] flex flex-col"
+            className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 w-full max-w-4xl overflow-hidden max-h-[85vh] flex flex-col"
           >
             <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-800 shrink-0">
               <div>
@@ -68,6 +68,7 @@ const RegistrationsModal = ({
                       <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-wider">Participant</th>
                       <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-wider">Contact</th>
                       <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-wider">Institution</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-wider">Referred By</th>
                       <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-wider">Date</th>
                     </tr>
                   </thead>
@@ -84,6 +85,9 @@ const RegistrationsModal = ({
                         </td>
                         <td className="px-6 py-4">
                           <p className="text-sm text-gray-600 dark:text-gray-300 leading-tight">{reg.college}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-sm text-gray-600 dark:text-gray-300 leading-tight">{reg.referrer || <span className="text-gray-400">Direct</span>}</p>
                         </td>
                         <td className="px-6 py-4">
                           <p className="text-[10px] text-gray-400 font-bold whitespace-nowrap">

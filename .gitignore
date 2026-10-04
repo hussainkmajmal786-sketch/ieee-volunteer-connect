@@ -21,8 +21,13 @@ build
 .env.*
 !.env.example
 
-# Firebase
-.firebase/
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+
+# Firebase migration (service-account key + exported data must never be committed)
+service-account*.json
+migration/
 
 # Editor directories and files
 .vscode/*
@@ -40,3 +45,6 @@ Thumbs.db
 .fuse_hidden*
 
 .vercel
+
+# Local test screenshots
+.shots/
