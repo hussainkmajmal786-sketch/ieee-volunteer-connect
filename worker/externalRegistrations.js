@@ -22,6 +22,7 @@ const FIELD_PATTERNS = {
     email: /e-?mail/i,
     phone: /phone|mobile|whats\s?app|contact\s*(no|num)/i,
     college: /college|institut|university|school/i,
+    department: /department|branch|stream|discipline/i,
     year: /\byear\b|semester|\bsem\b|batch/i,
     ref: /^ref$|referr|referral|ambassador|promo/i,
     name: /name/i,
@@ -115,14 +116,14 @@ export async function ingestRow(db, eventId, raw, source) {
             credited = !!referrer;
             return {
                 name: core.name || '', email: core.email || '', phone: core.phone || '',
-                college: core.college || '', year: core.year || '', eventId,
+                college: core.college || '', department: core.department || '', year: core.year || '', eventId,
                 source, answers, registeredAt: { __ts: row.submittedAt }, receivedAt: now,
                 ...(referrer ? { referredBy: referrer.id, referrerName: text(referrer.name, 100) || null } : {}),
             };
         }
         outcome = 'updated';
         const next = { ...before, answers: { ...(before.answers || {}), ...answers }, updatedAt: now };
-        for (const f of ['name', 'email', 'phone', 'college', 'year']) if (!next[f] && core[f]) next[f] = core[f];
+        for (const f of ['name', 'email', 'phone', 'college', 'department', 'year']) if (!next[f] && core[f]) next[f] = core[f];
         if (!before.referredBy && referrer && referrer.id !== before.userId) {
             next.referredBy = referrer.id;
             next.referrerName = text(referrer.name, 100) || null;

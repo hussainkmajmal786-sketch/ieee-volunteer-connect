@@ -7,6 +7,8 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../hooks/useToast";
 import { db, doc, getDoc } from "../lib/firestore";
 import { httpsCallable, functions } from "../lib/functions";
+import ComboBox from "../components/ComboBox";
+import { useDirectory } from "../hooks/useDirectory";
 
 const FIELD = "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none";
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Postgraduate"];
@@ -48,6 +50,7 @@ export default function ClassAmbassadorApplyPage() {
         setForm(f => ({ ...f, name: f.name || user.name || user.displayName || "", email: f.email || user.email || "", college: f.college || user.college || "" }));
     }, [user]);
 
+    const { colleges, departments } = useDirectory();
     const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
     const submit = async (e) => {
@@ -112,8 +115,8 @@ export default function ClassAmbassadorApplyPage() {
         { key: "name", label: "Full Name", icon: User, type: "text", placeholder: "Your name" },
         { key: "email", label: "Email", icon: Mail, type: "email", placeholder: "you@example.com" },
         { key: "phone", label: "Phone / WhatsApp", icon: Phone, type: "tel", placeholder: "+91 9876543210" },
-        { key: "college", label: "College", icon: Building2, type: "text", placeholder: "College of Engineering Kidangoor" },
-        { key: "department", label: "Department / Branch", icon: BookOpen, type: "text", placeholder: "e.g. Computer Science" },
+        { key: "college", label: "College", icon: Building2, options: colleges, placeholder: "Search or type your college" },
+        { key: "department", label: "Department / Branch", icon: BookOpen, options: departments, placeholder: "Search or type your department" },
         { key: "className", label: "Class / Division", icon: Users, type: "text", placeholder: "e.g. S5 CSE B" },
     ];
 
@@ -121,10 +124,18 @@ export default function ClassAmbassadorApplyPage() {
         <form onSubmit={submit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {fields.map(f => (
-                    <label key={f.key} className="block">
-                        <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5"><f.icon className="w-3 h-3 inline mr-1" /> {f.label}</span>
-                        <input type={f.type} value={form[f.key]} onChange={set(f.key)} placeholder={f.placeholder} className={FIELD} required />
-                    </label>
+                    f.options ? (
+                        <div key={f.key}>
+                            <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5"><f.icon className="w-3 h-3 inline mr-1" /> {f.label}</span>
+                            <ComboBox label={f.label} options={f.options} value={form[f.key]} onChange={(v) => setForm(prev => ({ ...prev, [f.key]: v }))}
+                                placeholder={f.placeholder} inputClassName={FIELD} required />
+                        </div>
+                    ) : (
+                        <label key={f.key} className="block">
+                            <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5"><f.icon className="w-3 h-3 inline mr-1" /> {f.label}</span>
+                            <input type={f.type} value={form[f.key]} onChange={set(f.key)} placeholder={f.placeholder} className={FIELD} required />
+                        </label>
+                    )
                 ))}
                 <label className="block">
                     <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5"><GraduationCap className="w-3 h-3 inline mr-1" /> Year</span>

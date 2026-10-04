@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PlusCircle, Trash2, X, Sparkles, FolderOpen, BookOpen, Cpu, MessageSquare, Building, Newspaper, CheckCircle, XCircle, Clock, FileText, Send, Link2, ExternalLink, Star, Video, Pencil } from "lucide-react";
+import { PlusCircle, Trash2, X, Sparkles, FolderOpen, BookOpen, Cpu, MessageSquare, Building, Newspaper, CheckCircle, XCircle, Clock, FileText, Send, Link2, ExternalLink, Star, Video, Pencil, GraduationCap } from "lucide-react";
 import { db } from "../../lib/backend";
 import { collection, onSnapshot, query, orderBy, doc, getDoc, updateDoc, serverTimestamp } from "../../lib/firestore";
 import { adminService } from "../../services/adminService";
 import { useToast } from "../../hooks/useToast";
 import { ProjectForm, SpotlightForm, AboutForm } from "./ShowcaseEditors";
+import DirectoryEditor from "./DirectoryEditor";
 
 const TABS = [
     { key: "opportunities", label: "Opportunities", icon: Sparkles },
@@ -18,6 +19,7 @@ const TABS = [
     { key: "spotlights", label: "Spotlights", icon: Star },
     { key: "applications", label: "Applications", icon: FileText },
     { key: "about", label: "Home: Who are we", icon: Video },
+    { key: "directory", label: "Colleges & departments", icon: GraduationCap },
 ];
 
 // ── Generic modal wrapper ──
@@ -57,7 +59,7 @@ export default function ContentManager() {
 
     // Subscribe to all collections
     useEffect(() => {
-        const unsubs = TABS.filter(t => t.key !== "applications" && t.key !== "about").map(t => {
+        const unsubs = TABS.filter(t => !["applications", "about", "directory"].includes(t.key)).map(t => {
             return onSnapshot(query(collection(db, t.key), orderBy("createdAt", "desc")), snap => {
                 setData(prev => ({ ...prev, [t.key]: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
             });
@@ -207,9 +209,9 @@ export default function ContentManager() {
 
             {/* Content */}
             <div className="p-6">
-                {tab === "about" ? <AboutForm /> : null}
+                {tab === "about" ? <AboutForm /> : tab === "directory" ? <DirectoryEditor /> : null}
 
-                {tab !== "applications" && tab !== "about" && (
+                {!["applications", "about", "directory"].includes(tab) && (
                     <div className="flex justify-end mb-4">
                         <button onClick={() => setModal("add")} className="btn-primary text-sm !py-2 !px-4 flex items-center gap-2">
                             <PlusCircle className="w-4 h-4" /> Add {TABS.find(t => t.key === tab)?.label?.slice(0, -1) || "Item"}
@@ -218,7 +220,7 @@ export default function ContentManager() {
                 )}
 
                 {/* Items List */}
-                {tab === "about" ? null : items.length === 0 ? (
+                {tab === "about" || tab === "directory" ? null : items.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
                         <p className="text-sm">No {tab} added yet.</p>
                     </div>

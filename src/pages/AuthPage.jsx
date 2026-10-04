@@ -7,7 +7,8 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../hooks/useToast";
 import { loginSchema, registerSchema } from "../utils/validation";
 import MetaTags from "../shared/MetaTags";
-import { COLLEGE_BRANCHES } from "../utils/constants";
+import ComboBox from "../components/ComboBox";
+import { useDirectory } from "../hooks/useDirectory";
 
 export default function AuthPage() {
     const [isLogin, setIsLogin] = useState(true);
@@ -18,6 +19,7 @@ export default function AuthPage() {
     const [password, setPassword] = useState("");
     const [name, setName] = useState("");
     const [college, setCollege] = useState("");
+    const { colleges } = useDirectory();
     const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
@@ -179,10 +181,9 @@ export default function AuthPage() {
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">College</label>
                                         <div className="relative">
-                                            <input type="text" list="auth-college-options" placeholder="Select or type your college" value={college} onChange={(e) => setCollege(e.target.value)} className="w-full pl-4 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue focus:border-transparent outline-none transition" required />
-                                            <datalist id="auth-college-options">
-                                                {COLLEGE_BRANCHES.map(c => <option key={c} value={c} />)}
-                                            </datalist>
+                                            <ComboBox label="College" options={colleges} value={college} onChange={setCollege} required
+                                                placeholder="Search or type your college"
+                                                inputClassName="w-full pl-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue focus:border-transparent outline-none transition" />
                                         </div>
                                     </div>
                                 </>

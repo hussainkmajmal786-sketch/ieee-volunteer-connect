@@ -17,11 +17,11 @@ const fileBase = (event) => (event?.name || 'event').replace(/[^\w-]+/g, '_').sl
 export function registrationTable(list, ambassadorOf) {
     const questions = [];
     for (const r of list) for (const q of Object.keys(r.answers || {})) if (!questions.includes(q)) questions.push(q);
-    const headers = ['#', 'Name', 'Email', 'Phone', 'College', 'Year', 'Ambassador', 'Ambassador type', 'Source', 'Registered at', ...questions];
+    const headers = ['#', 'Name', 'Email', 'Phone', 'College', 'Department', 'Year', 'Ambassador', 'Ambassador type', 'Source', 'Registered at', ...questions];
     const rows = list.map((r, i) => {
         const amb = r.referredBy ? ambassadorOf(r.referredBy, r.referrerName) : null;
         return [
-            i + 1, r.name, r.email, r.phone, r.college, r.year,
+            i + 1, r.name, r.email, r.phone, r.college, r.department || '', r.year,
             amb?.name || 'Direct', amb?.type || '', sourceLabel(r), formatDate(r.registeredAt),
             ...questions.map(q => r.answers?.[q] ?? ''),
         ];
@@ -36,7 +36,7 @@ export function exportRegistrationsCsv(event, list, ambassadorOf) {
 
 // Answers not already shown in the columns (name, email, referral code, …).
 function details(reg, questions, values) {
-    const shown = new Set([reg.name, reg.email, reg.phone, reg.college, reg.year, reg.referredBy]
+    const shown = new Set([reg.name, reg.email, reg.phone, reg.college, reg.department, reg.year, reg.referredBy]
         .filter(Boolean).map(v => String(v).toLowerCase()));
     return questions
         .map((q, i) => [q, String(values[i] ?? '')])
@@ -74,17 +74,18 @@ export async function exportRegistrationsPdf(event, list, ambassadorOf, funnelRo
 
     // Core columns as a table; the form answers (any number of questions)
     // go into one wrapped "Form details" column so the page never overflows.
-    const core = headers.slice(0, 10);
+    const CORE = 11;
+    const core = headers.slice(0, CORE);
     autoTable(doc, {
         startY: y,
         head: [[...core, ...(questions.length ? ['Form details'] : [])]],
         body: rows.map((r, n) => [
-            ...r.slice(0, 10),
-            ...(questions.length ? [details(list[n], questions, r.slice(10))] : []),
+            ...r.slice(0, CORE),
+            ...(questions.length ? [details(list[n], questions, r.slice(CORE))] : []),
         ]),
         styles: { fontSize: 7, cellPadding: 3, overflow: 'linebreak', valign: 'top' },
         headStyles: { fillColor: blue, fontSize: 7 },
-        columnStyles: { 0: { cellWidth: 22 }, 10: { cellWidth: 180 } },
+        columnStyles: { 0: { cellWidth: 22 }, [CORE]: { cellWidth: 170 } },
         margin: { left: 30, right: 30 },
         didDrawPage: () => {
             doc.setFontSize(7).setTextColor(150);
