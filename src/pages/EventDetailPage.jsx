@@ -1,15 +1,15 @@
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import { useToast } from "../hooks/useToast";
 import { useAuth } from "../hooks/useAuth";
-import { db, functions } from "../firebase/config";
-import { doc, collection, query, onSnapshot, orderBy, limit } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../lib/backend";
+import { doc, collection, query, onSnapshot, orderBy, limit } from "../lib/firestore";
+import { httpsCallable } from "../lib/functions";
 import MetaTags from "../shared/MetaTags";
 import { trackingService } from "../services/trackingService";
 import { rememberReferral, resolveReferral, buildReferralLink } from "../utils/referral";
@@ -109,6 +109,7 @@ export default function EventDetailPage() {
     const [form, setForm] = useState({ name: '', email: '', phone: '', college: '', year: '1st Year' });
     const [notifications, setNotifications] = useState([]);
     const [dismissedNotifs, setDismissedNotifs] = useState(new Set());
+    const namedViewRef = useRef(null);
 
     // Track page view + referral visit on mount
     useEffect(() => {
@@ -147,8 +148,12 @@ export default function EventDetailPage() {
             if (docSnap.exists()) {
                 const data = { id: docSnap.id, ...docSnap.data() };
                 setEvent(data);
-                // Back-fill eventName on the already-fired page_view via a follow-up track
-                trackingService.track('page_view', { eventId: id, eventName: data.name });
+                // Back-fill eventName on the already-fired page_view — once per
+                // event, not on every live update of the document.
+                if (namedViewRef.current !== id) {
+                    namedViewRef.current = id;
+                    trackingService.track('page_view', { eventId: id, eventName: data.name });
+                }
             }
             setLoading(false);
         });

@@ -45,15 +45,14 @@ export default function AuthPage() {
         return err.message || "An unexpected error occurred. Please try again.";
     };
 
+    // Keep the query string so referral links (?ref=) survive sign-in.
+    const from = location.state?.from;
+    const redirectPath = from?.pathname ? `${from.pathname}${from.search || ""}${from.hash || ""}` : "/dashboard";
+
     // If already logged in, redirect
     useEffect(() => {
-        if (user) {
-            // Keep the query string so referral links (?ref=) survive sign-in.
-            const from = location.state?.from;
-            const redirectPath = from?.pathname ? `${from.pathname}${from.search || ""}${from.hash || ""}` : "/dashboard";
-            navigate(redirectPath, { replace: true });
-        }
-    }, [user, navigate, location]);
+        if (user) navigate(redirectPath, { replace: true });
+    }, [user, navigate, redirectPath]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -82,8 +81,8 @@ export default function AuthPage() {
     const handleGoogle = async () => {
         setLoading(true);
         try {
-            await loginWithGoogle();
-            addToast("Logged in with Google", "success");
+            // Redirects to Google and back to where the visitor came from.
+            await loginWithGoogle(redirectPath);
         } catch (err) {
             console.error(err);
             addToast(getFriendlyError(err), "error");

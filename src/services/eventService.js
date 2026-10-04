@@ -1,4 +1,4 @@
-import { db } from "../firebase/config";
+import { db } from "../lib/backend";
 import {
     collection,
     doc,
@@ -11,7 +11,7 @@ import {
     limit,
     serverTimestamp,
     onSnapshot
-} from "firebase/firestore";
+} from "../lib/firestore";
 
 /**
  * Event Service

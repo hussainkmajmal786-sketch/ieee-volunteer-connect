@@ -1,6 +1,6 @@
-import { collection, query, orderBy, limit, onSnapshot, getCountFromServer, getDocs, where } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { db, functions } from "../firebase/config";
+import { collection, query, orderBy, limit, onSnapshot, getCountFromServer, getDocs, where } from "../lib/firestore";
+import { httpsCallable } from "../lib/functions";
+import { db, functions } from "../lib/backend";
 
 function getDeviceType() {
     const ua = navigator.userAgent;

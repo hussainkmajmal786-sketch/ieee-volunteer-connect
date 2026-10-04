@@ -3,8 +3,8 @@ import { Award, Share2, CheckCircle, Clock, Calendar, ChevronRight, Copy, Check,
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { db } from "../firebase/config";
-import { doc, updateDoc, collection, query, onSnapshot, arrayUnion, increment } from "firebase/firestore";
+import { db } from "../lib/backend";
+import { doc, updateDoc, collection, query, onSnapshot, arrayUnion, increment } from "../lib/firestore";
 import Button from "../components/Button";
 import { useToast } from "../hooks/useToast";
 import { getGrade, getNextGrade, getGradeProgress, getEarnedBadges, BADGES } from "../utils/grades";

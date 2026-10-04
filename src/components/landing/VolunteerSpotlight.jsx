@@ -2,8 +2,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Award, Clock, Github, Linkedin, Trophy, X, Globe, Mail, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { db } from "../../firebase/config";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "../../lib/backend";
+import { collection, query, orderBy, onSnapshot } from "../../lib/firestore";
 
 const STATIC_SPOTLIGHTS = [
     { name: "Priya Sharma", role: "Branch Chair", avatar: "P", hours: 420, badges: ["Event Hero", "Core Volunteer", "Tech Mentor"], achievements: "Led 15+ events with 2000+ participants", gradient: "from-amber-400 to-yellow-300", rank: 1, bio: "Passionate about technology leadership and community building. Leading IEEE SB CEK to new heights.", linkedin: "https://linkedin.com/in/priya-sharma", github: "https://github.com/priyasharma", email: "priya@ieee.org", college: "CEK", branch: "Computer Science", year: "4th Year" },

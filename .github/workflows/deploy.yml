@@ -1,19 +1,18 @@
-name: Firebase Deploy
+name: Build, test & deploy (Cloudflare)
 
 on:
   pull_request:
   push:
     branches:
       - main
-      - master
 
 jobs:
   build_test_and_deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
-      checks: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
     steps:
       - name: Checkout Repo
@@ -25,69 +24,29 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Setup Java for Firebase emulators
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
       - name: Install Dependencies
         run: npm ci
-
-      - name: Install Functions Dependencies
-        run: npm ci
-        working-directory: functions
 
       - name: Lint
         run: npm run lint
 
+      - name: Unit Tests
+        run: npm test
+
       - name: Build Project
         run: npm run build
         env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_CLOUDINARY_CLOUD_NAME: ${{ secrets.VITE_CLOUDINARY_CLOUD_NAME }}
-          VITE_CLOUDINARY_UPLOAD_PRESET: ${{ secrets.VITE_CLOUDINARY_UPLOAD_PRESET }}
-          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_GA_MEASUREMENT_ID: ${{ secrets.VITE_GA_MEASUREMENT_ID }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_SENTRY_TRACES_SAMPLE_RATE: ${{ secrets.VITE_SENTRY_TRACES_SAMPLE_RATE }}
 
       - name: Dependency Audit (production only)
         run: npm audit --audit-level=high --omit=dev
 
-      - name: Functions Dependency Audit
-        run: npm audit --audit-level=high --omit=dev
-        working-directory: functions
-
-      - name: Functions Static Check
-        run: npm run lint
-        working-directory: functions
-
-      - name: Unit Tests
-        run: npm test
-
-      - name: Firebase Rules Tests
-        run: npm run test:rules
-
-      - name: Deploy Preview Channel
-        if: github.event_name == 'pull_request'
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_IEEE_VC_CEK_MAIN }}"
-          channelId: pr-${{ github.event.pull_request.number }}
-          expires: 7d
-          projectId: ieee-vc-cek-main
-
-      - name: Deploy Firebase Resources
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: w9jds/firebase-action@v13.29.1
-        with:
-          args: deploy --only hosting,firestore,storage,functions
-        env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_IEEE_VC_CEK_MAIN }}
-          PROJECT_ID: ieee-vc-cek-main
+      # Needs repo secret CLOUDFLARE_API_TOKEN (template "Edit Cloudflare Workers"
+      # + D1 Edit). Skipped until it is added.
+      - name: Apply D1 migrations & deploy Worker
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && env.CLOUDFLARE_API_TOKEN != ''
+        run: |
+          npx wrangler d1 migrations apply DB --remote
+          npx wrangler deploy

@@ -7,8 +7,8 @@ import {
     orderBy,
     limit,
     onSnapshot,
-} from "firebase/firestore";
-import { db } from "../firebase/config";
+} from "../lib/firestore";
+import { db } from "../lib/backend";
 import { useAuth } from "../context/AuthContext";
 
 /**

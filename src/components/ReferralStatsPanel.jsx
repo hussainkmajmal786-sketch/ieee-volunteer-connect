@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MousePointerClick, Eye, UserCheck, TrendingUp, ChevronDown, Building2 } from "lucide-react";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "../firebase/config";
+import { collection, query, where, getDocs } from "../lib/firestore";
+import { db } from "../lib/backend";
 import { referralFunnel } from "../utils/referral";
 
 function formatDate(ts) {

@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Megaphone, ChevronDown, Download, MousePointerClick, Eye, UserCheck, TrendingUp } from "lucide-react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebase/config";
+import { collection, getDocs } from "../../lib/firestore";
+import { db } from "../../lib/backend";
 import { ambassadorRows } from "../../utils/referral";
 
 function formatDate(ts) {

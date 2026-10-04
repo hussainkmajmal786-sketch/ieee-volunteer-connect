@@ -4,11 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import Button from "../components/Button";
 import { useToast } from "../hooks/useToast";
 import { useAuth } from "../context/AuthContext";
-import { db } from "../firebase/config";
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, setDoc, getDocs, getDoc, increment, serverTimestamp } from "firebase/firestore";
-import { uploadImage as uploadToStorage } from '../utils/firebaseUpload';
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { initializeApp, deleteApp } from "firebase/app";
+import { db } from "../lib/backend";
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, getDocs, getDoc, increment, serverTimestamp } from "../lib/firestore";
+import { uploadImage as uploadToStorage } from '../utils/upload';
+import { api } from "../lib/api";
 import { getCroppedImg } from '../utils/cropImage';
 import { ROLES, COLLEGE_BRANCHES } from '../utils/constants';
 
@@ -211,31 +210,14 @@ export default function AdminDashboard() {
         e.preventDefault();
         setCreationError('');
         try {
-            const firebaseConfig = {
-                apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-                authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-                projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-                storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-                messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-                appId: import.meta.env.VITE_FIREBASE_APP_ID
-            };
-            const secondaryApp = initializeApp(firebaseConfig, "Secondary" + Date.now());
-            const secondaryAuth = getAuth(secondaryApp);
-            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, newVolunteer.email, newVolunteer.password);
-            await setDoc(doc(db, "users", userCredential.user.uid), {
-                uid: userCredential.user.uid,
+            // The Worker creates the login and profile without touching this admin session.
+            await api('/api/admin/users', {
                 name: newVolunteer.name,
                 email: newVolunteer.email,
-                role: "VOLUNTEER",
+                password: newVolunteer.password,
                 branch: newVolunteer.branch,
-                college: newVolunteer.college || newVolunteer.branch,
-                points: 0,
-                tasksCompleted: 0,
-                shares: 0,
-                createdAt: new Date().toISOString()
+                college: newVolunteer.college,
             });
-            await secondaryAuth.signOut();
-            await deleteApp(secondaryApp);
             closeVolunteerModal();
             addToast('Volunteer account created!', 'success');
         } catch (error) {

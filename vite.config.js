@@ -17,7 +17,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
           'vendor-motion': ['framer-motion'],
           'vendor-ui': ['lucide-react'],
         }
@@ -33,9 +32,14 @@ export default defineConfig({
   server: {
     open: true,
     host: true,
+    // `npm run dev:api` runs the Worker (API + D1) on :8787
+    proxy: {
+      '/api': 'http://127.0.0.1:8787',
+      '/files': 'http://127.0.0.1:8787',
+    },
   },
   // Optimize dependency pre-bundling
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', 'firebase/app', 'firebase/auth', 'firebase/firestore'],
+    include: ['react', 'react-dom', 'react-router-dom'],
   },
 })

@@ -6,9 +6,9 @@
  *  - `network-first` for navigation requests (HTML) so new deploys are picked up
  *    quickly, with a graceful offline fallback when the network fails
  *  - `stale-while-revalidate` for static build assets (hashed, safe to cache)
- *  - Bypass cache entirely for Firebase / Google APIs (never cache auth/firestore)
+ *  - Bypass cache entirely for the /api backend and Google services (never cache auth/data)
  */
-const VERSION = 'ieee-vc-v1';
+const VERSION = 'vc-cf-v1';
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
@@ -36,8 +36,9 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-function isFirebaseOrAuthRequest(url) {
-    return /(firestore|firebaseio|googleapis|identitytoolkit|securetoken|firebase|gstatic)/i.test(url.host);
+function isApiOrAuthRequest(url) {
+    if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) return true;
+    return /(googleapis|googletagmanager|gstatic)/i.test(url.host);
 }
 
 self.addEventListener('fetch', (event) => {
@@ -45,8 +46,8 @@ self.addEventListener('fetch', (event) => {
     if (req.method !== 'GET') return;
 
     const url = new URL(req.url);
-    // Never cache Firebase/Google auth traffic — must be fresh + online
-    if (isFirebaseOrAuthRequest(url)) return;
+    // Never cache API/auth traffic — must be fresh + online
+    if (isApiOrAuthRequest(url)) return;
 
     // Navigation requests — network-first with offline fallback
     if (req.mode === 'navigate') {

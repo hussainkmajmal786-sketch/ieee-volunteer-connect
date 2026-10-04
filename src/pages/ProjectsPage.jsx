@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { Github, ExternalLink, Search, Filter, FolderOpen, X, Users, Cpu } from "lucide-react";
-import { db } from "../firebase/config";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { db } from "../lib/backend";
+import { collection, onSnapshot, query, orderBy } from "../lib/firestore";
 import MetaTags from "../shared/MetaTags";
 
 const CATS = ["All", "AI", "IoT", "Web", "Robotics", "Sustainability"];
