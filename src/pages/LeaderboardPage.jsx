@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
+import Avatar from "../components/Avatar";
+import { apiGet } from "../lib/api";
 import { motion } from "framer-motion";
 import { db } from "../lib/backend";
-import { collection, query, orderBy, onSnapshot, where, deleteDoc, updateDoc, doc } from "../lib/firestore";
+import { deleteDoc, updateDoc, doc } from "../lib/firestore";
 import { getGrade, getNextGrade, getGradeProgress, GRADE_TIERS, getEarnedBadges } from "../utils/grades";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../hooks/useToast";
@@ -22,6 +25,7 @@ export default function LeaderboardPage() {
             try {
                 await updateDoc(doc(db, "users", userId), { points: 0 });
                 addToast(`Points reset for "${name}"`, 'info');
+                load();
             } catch (err) {
                 console.error(err);
                 addToast('Failed to reset points', 'error');
@@ -36,6 +40,7 @@ export default function LeaderboardPage() {
             try {
                 await deleteDoc(doc(db, "users", userId));
                 addToast(`"${name}" removed from leaderboard`, 'warning');
+                load();
             } catch (err) {
                 console.error(err);
                 addToast('Failed to delete user', 'error');
@@ -43,56 +48,23 @@ export default function LeaderboardPage() {
         }
     };
 
-    useEffect(() => {
-        // Primary query: requires composite index (role + points desc)
-        const q = query(
-            collection(db, "users"),
-            where("role", "in", ["VOLUNTEER", "ADMIN", "STUDENT"]),
-            orderBy("points", "desc")
-        );
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const usersData = [];
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                usersData.push({
-                    id: doc.id,
-                    name: data.name || 'Unknown User',
-                    branch: data.branch || 'IEEE Branch',
-                    points: data.points || 0,
-                    tasksCompleted: data.tasksCompleted || 0,
-                    shares: data.shares || 0,
-                });
-            });
-            setLeaders(usersData);
+    // Public, server-ranked leaderboard (readable without signing in).
+    const load = useCallback(async () => {
+        try {
+            const { leaders } = await apiGet("/api/public/leaderboard");
+            setLeaders(leaders.map(l => ({ ...l, branch: [l.department, l.college].filter(Boolean).join(" · ") || "IEEE SB CEK" })));
+        } catch (err) {
+            console.error("Failed to load leaderboard", err);
+        } finally {
             setLoading(false);
-        }, (error) => {
-            // Fallback: if composite index not ready, fetch all users and filter/sort client-side
-            console.warn("Leaderboard index not ready, using fallback:", error.message);
-            const fallbackQ = query(collection(db, "users"));
-            onSnapshot(fallbackQ, (snapshot) => {
-                const usersData = [];
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (data.role === "VOLUNTEER" || data.role === "ADMIN" || data.role === "STUDENT") {
-                        usersData.push({
-                            id: doc.id,
-                            name: data.name || 'Unknown User',
-                            branch: data.branch || 'IEEE Branch',
-                            points: data.points || 0,
-                            tasksCompleted: data.tasksCompleted || 0,
-                            shares: data.shares || 0,
-                        });
-                    }
-                });
-                usersData.sort((a, b) => b.points - a.points);
-                setLeaders(usersData);
-                setLoading(false);
-            });
-        });
-
-        return unsubscribe;
+        }
     }, []);
+
+    useEffect(() => {
+        load();
+        const timer = setInterval(() => { if (document.visibilityState === "visible") load(); }, 30000);
+        return () => clearInterval(timer);
+    }, [load]);
 
     const filteredLeaders = activeFilter === 'All'
         ? leaders
@@ -166,10 +138,14 @@ export default function LeaderboardPage() {
                                 return (
                                     <motion.div key={leader.id} initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.15, type: "spring", stiffness: 120 }} className={`flex flex-col items-center ${isFirst ? 'order-2 -mt-8' : i === 0 ? 'order-1' : 'order-3'}`}>
                                         <div className="text-3xl md:text-4xl mb-3 filter drop-shadow-md">{style.icon}</div>
-                                        <div className={`relative w-20 h-20 md:w-28 md:h-28 rounded-full bg-gradient-to-br ${style.bg} flex items-center justify-center text-white text-3xl md:text-4xl font-black shadow-2xl ring-4 ${style.ring} ring-offset-4 ring-offset-white dark:ring-offset-gray-950 mb-3`}>
-                                            {leader.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <h3 className="font-extrabold text-gray-900 dark:text-white text-base md:text-lg text-center leading-tight">{leader.name}</h3>
+                                        {leader.photoURL ? (
+                                            <img src={leader.photoURL} alt="" className={`w-20 h-20 md:w-28 md:h-28 rounded-full object-cover shadow-2xl ring-4 ${style.ring} ring-offset-4 ring-offset-white dark:ring-offset-gray-950 mb-3`} />
+                                        ) : (
+                                            <div className={`relative w-20 h-20 md:w-28 md:h-28 rounded-full bg-gradient-to-br ${style.bg} flex items-center justify-center text-white text-3xl md:text-4xl font-black shadow-2xl ring-4 ${style.ring} ring-offset-4 ring-offset-white dark:ring-offset-gray-950 mb-3`}>
+                                                {leader.name.charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
+                                        <Link to={`/volunteers/${leader.id}`} className="font-extrabold text-gray-900 dark:text-white text-base md:text-lg text-center leading-tight hover:text-ieee-blue">{leader.name}</Link>
                                         <p className="text-xs text-gray-500 mb-1 font-medium">{leader.branch}</p>
                                         {/* Grade badge */}
                                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-md mb-2 ${grade.bgPill} ${grade.textClass}`}>{grade.icon} {grade.name}</span>
@@ -223,11 +199,9 @@ export default function LeaderboardPage() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-4">
-                                                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${grade.bgClass} flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:scale-110 transition-transform`}>
-                                                            {leader.name.charAt(0).toUpperCase()}
-                                                        </div>
+                                                        <Avatar src={leader.photoURL} name={leader.name} size="sm" className="w-10 h-10 group-hover:scale-110 transition-transform" />
                                                         <div>
-                                                            <p className="font-bold text-gray-900 dark:text-white sm:text-base">{leader.name}</p>
+                                                            <Link to={`/volunteers/${leader.id}`} className="font-bold text-gray-900 dark:text-white sm:text-base hover:text-ieee-blue">{leader.name}</Link>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{leader.branch}</p>
                                                         </div>
                                                     </div>

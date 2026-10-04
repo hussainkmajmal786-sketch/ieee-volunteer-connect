@@ -34,7 +34,7 @@ export const BADGES = [
     { id: 'first_event', name: 'First Event', icon: '🎪', desc: 'Attend your first event', condition: (u) => (u.points || 0) >= 10 },
     { id: 'rising_star', name: 'Rising Star', icon: '⭐', desc: 'Earn 50 points', condition: (u) => (u.points || 0) >= 50 },
     { id: 'team_player', name: 'Team Player', icon: '🤝', desc: 'Complete 5 tasks', condition: (u) => (u.tasksCompleted || 0) >= 5 },
-    { id: 'social_star', name: 'Social Star', icon: '📣', desc: 'Share 3 event links', condition: (u) => (u.shares || 0) >= 3 },
+    { id: 'social_star', name: 'Social Star', icon: '📣', desc: 'Bring 3 people to events through your links', condition: (u) => (u.shares || 0) + (u.referrals || 0) >= 3 },
     { id: 'century', name: 'Century', icon: '💯', desc: 'Reach 100 points', condition: (u) => (u.points || 0) >= 100 },
     { id: 'expert', name: 'Expert', icon: '🏆', desc: 'Reach Gold tier (300+ pts)', condition: (u) => (u.points || 0) >= 300 },
     { id: 'platinum_pro', name: 'Platinum Pro', icon: '💎', desc: 'Reach Platinum tier (600+ pts)', condition: (u) => (u.points || 0) >= 600 },

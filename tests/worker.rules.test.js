@@ -181,6 +181,10 @@ describe("image uploads (former storage.rules)", () => {
         expect(uploadProblem({ ...ok, type: "image/svg+xml" })).toMatch(/JPEG/);
         expect(uploadProblem({ ...ok, folder: "secrets" })).toMatch(/folder/);
         expect(uploadProblem({ ...ok, size: 5 * 1024 * 1024 })).toMatch(/5MB/);
+        expect(uploadProblem({ ...ok, folder: "project-docs", type: "application/pdf", size: 8 * 1024 * 1024 })).toBeNull();
+        expect(uploadProblem({ ...ok, folder: "about", type: "video/mp4", size: 20 * 1024 * 1024 })).toBeNull();
+        expect(uploadProblem({ ...ok, folder: "projects", type: "application/pdf", size: 10 })).toMatch(/JPEG/);
+        expect(uploadProblem({ ...ok, folder: "about", type: "text/html", size: 10 })).toMatch(/accepts/);
     });
 });
 
@@ -232,5 +236,25 @@ describe("event link destination (super admin only)", () => {
         expect(await canWrite("update", "events/e1", evt, { ...evt, linkMode: "external", externalUrl: "javascript:alert(1)" }, superAdmin())).toBe(false);
         expect(await canWrite("update", "events/e1", evt, { ...evt, linkMode: "external" }, superAdmin())).toBe(false);
         expect(await canWrite("update", "events/e1", evt, { ...evt, linkMode: "weird", externalUrl: "https://x.y" }, superAdmin())).toBe(false);
+    });
+});
+
+describe("profiles / portfolios", () => {
+    const me = { name: "Alice", role: "VOLUNTEER", approvalStatus: "ACTIVE", points: 5 };
+    const ctx = () => as("alice", me);
+    const upd = (patch) => canWrite("update", "users/alice", me, { ...me, ...patch }, ctx());
+    it("lets people edit their own portfolio", async () => {
+        expect(await upd({ headline: "ECE · S5", bio: "Robotics", skills: ["React", "Arduino"], contactEmail: "a@x.com", showEmail: true,
+            socials: { linkedin: "https://linkedin.com/in/alice", instagram: "https://instagram.com/alice", website: "" } })).toBe(true);
+    });
+    it("blocks script links, junk and self-set photos/referrals", async () => {
+        expect(await upd({ socials: { linkedin: "javascript:alert(1)" } })).toBe(false);
+        expect(await upd({ socials: { myspace: "https://x.com" } })).toBe(false);
+        expect(await upd({ skills: "React" })).toBe(false);
+        expect(await upd({ skills: new Array(30).fill("x") })).toBe(false);
+        expect(await upd({ contactEmail: "not-an-email" })).toBe(false);
+        expect(await upd({ bio: "x".repeat(1001) })).toBe(false);
+        expect(await upd({ photoURL: "https://evil.example/x.png" })).toBe(false);
+        expect(await upd({ referrals: 99 })).toBe(false);
     });
 });

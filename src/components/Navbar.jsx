@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Moon, Sun, LogOut, User, ChevronDown, LayoutDashboard, Shield, Search, Sparkles, FolderOpen, Users, Cpu, BookOpen, Mail } from "lucide-react";
+import { Menu, X, Moon, Sun, LogOut, User, ChevronDown, LayoutDashboard, Shield, Search, Sparkles, FolderOpen, Users, Cpu, BookOpen, Mail, Trophy } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "../hooks/useTheme";
@@ -187,7 +187,7 @@ export default function Navbar() {
                             {user ? (
                                 <div className="relative" ref={profileRef}>
                                     <button onClick={() => setProfileOpen(!profileOpen)} className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all duration-200 ${profileOpen ? "bg-gray-100 dark:bg-gray-800" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}`} aria-label="Open profile menu" aria-expanded={profileOpen} aria-haspopup="true">
-                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-ieee-blue to-cyan-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">{userInitial}</div>
+                                        {user.photoURL ? <img src={user.photoURL} alt="" className="w-8 h-8 rounded-xl object-cover shadow-sm" /> : <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-ieee-blue to-cyan-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">{userInitial}</div>}
                                         <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`} />
                                     </button>
                                     <AnimatePresence>
@@ -195,7 +195,7 @@ export default function Navbar() {
                                             <motion.div initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.96 }} transition={{ duration: 0.15 }} className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/40 border border-gray-100 dark:border-gray-800 overflow-hidden z-50">
                                                 <div className="p-4 bg-gradient-to-br from-ieee-blue/5 to-cyan-500/5 dark:from-ieee-blue/10 dark:to-cyan-500/10 border-b border-gray-100 dark:border-gray-800">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-ieee-blue to-cyan-500 flex items-center justify-center text-white text-lg font-bold shadow-md">{userInitial}</div>
+                                                        {user.photoURL ? <img src={user.photoURL} alt="" className="w-11 h-11 rounded-xl object-cover shadow-sm" /> : <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-ieee-blue to-cyan-500 flex items-center justify-center text-white text-lg font-bold shadow-md">{userInitial}</div>}
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user.name || "User"}</p>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
@@ -210,8 +210,11 @@ export default function Navbar() {
                                                     <button onClick={() => { setProfileOpen(false); navigate(isAdminRole(user.role) ? "/admin" : "/volunteer"); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors">
                                                         <LayoutDashboard size={16} className="text-gray-400" /> Dashboard
                                                     </button>
+                                                    <button onClick={() => { setProfileOpen(false); navigate("/profile"); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors">
+                                                        <User size={16} className="text-gray-400" /> My Profile
+                                                    </button>
                                                     <button onClick={() => { setProfileOpen(false); navigate("/leaderboard"); }} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors">
-                                                        <User size={16} className="text-gray-400" /> My Profile & Rank
+                                                        <Trophy size={16} className="text-gray-400" /> Leaderboard
                                                     </button>
                                                 </div>
                                                 <div className="p-2 border-t border-gray-100 dark:border-gray-800">
@@ -266,7 +269,7 @@ export default function Navbar() {
                             {user && (
                                 <div className="mb-3 p-4 bg-gradient-to-br from-ieee-blue/5 to-cyan-500/5 dark:from-ieee-blue/10 dark:to-cyan-500/10 rounded-2xl border border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-ieee-blue to-cyan-500 flex items-center justify-center text-white text-base font-bold shadow-md">{userInitial}</div>
+                                        {user.photoURL ? <img src={user.photoURL} alt="" className="w-10 h-10 rounded-xl object-cover shadow-sm" /> : <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-ieee-blue to-cyan-500 flex items-center justify-center text-white text-base font-bold shadow-md">{userInitial}</div>}
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user.name || "User"}</p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>

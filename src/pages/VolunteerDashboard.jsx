@@ -236,7 +236,8 @@ export default function VolunteerDashboard() {
                         </div>
                     </div>
                 </div>
-                {/* Files shared with everyone / chosen people reach pending accounts too */}
+                {/* Profile + files shared with everyone / chosen people reach pending accounts too */}
+                <p className="mt-6"><Link to="/profile" className="text-sm font-semibold text-ieee-blue hover:underline">Complete your profile while you wait →</Link></p>
                 <div className="mt-8 text-left"><SharedFilesPanel /></div>
             </div>
         );
@@ -290,15 +291,22 @@ export default function VolunteerDashboard() {
 
                 <div className="flex items-center gap-5 relative z-10">
                     <div className="relative">
-                        <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${grade.bgClass} shadow-lg flex items-center justify-center text-white text-3xl font-bold`}>
-                            {user.name ? user.name.charAt(0).toUpperCase() : '?'}
-                        </div>
+                        {user.photoURL ? (
+                            <img src={user.photoURL} alt="" className="w-20 h-20 rounded-2xl object-cover shadow-lg" />
+                        ) : (
+                            <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${grade.bgClass} shadow-lg flex items-center justify-center text-white text-3xl font-bold`}>
+                                {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                            </div>
+                        )}
                         <div className={`absolute -bottom-1.5 -right-1.5 ${grade.bgPill} ${grade.textClass} text-[10px] font-black px-2 py-0.5 rounded-lg shadow border-2 border-white dark:border-gray-900`}>
                             {grade.icon} {grade.name}
                         </div>
                     </div>
                     <div>
-                        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">{user.name}</h1>
+                        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-3 flex-wrap">
+                            {user.name}
+                            <Link to="/profile" className="text-xs font-semibold text-ieee-blue dark:text-cyan-400 border border-ieee-blue/30 rounded-lg px-2.5 py-1 hover:bg-ieee-blue/10">Edit profile</Link>
+                        </h1>
                         <p className="text-ieee-blue dark:text-cyan-400 font-medium text-sm flex items-center gap-2">
                             <span className="uppercase tracking-wider text-[10px] font-black">{user.role}</span> • {user.branch || 'IEEE Branch'}
                         </p>

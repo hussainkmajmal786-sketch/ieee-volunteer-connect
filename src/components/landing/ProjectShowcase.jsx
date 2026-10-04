@@ -4,6 +4,7 @@ import { Github, ExternalLink, ChevronRight, X, Users, Cpu, Calendar } from "luc
 import { Link } from "react-router-dom";
 import { db } from "../../lib/backend";
 import { collection, onSnapshot, query, orderBy, limit } from "../../lib/firestore";
+import { projectLinks, projectImages } from "../../utils/projects";
 
 const CAT_COLORS = { AI: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400", IoT: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400", Web: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400", Robotics: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400", Sustainability: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" };
 const STATUS_COLORS = { Active: "bg-green-500", Completed: "bg-blue-500", "In Progress": "bg-amber-500" };
@@ -42,6 +43,9 @@ export default function ProjectShowcase() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {projects.map((p, i) => (
                         <motion.div key={p.id || p.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} whileHover={{ y: -4 }} onClick={() => setSelected(p)} className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all cursor-pointer group">
+                            {projectImages(p)[0] && (
+                                <img src={projectImages(p)[0]} alt="" loading="lazy" className="-mx-6 -mt-6 mb-4 w-[calc(100%+3rem)] max-w-none h-40 object-cover rounded-t-2xl" />
+                            )}
                             <div className="flex items-center justify-between mb-4">
                                 <span className={`px-2.5 py-1 text-xs font-bold rounded-lg ${CAT_COLORS[p.category] || "bg-gray-100 text-gray-600"}`}>{p.category}</span>
                                 <div className="flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${STATUS_COLORS[p.status] || "bg-gray-400"}`} /><span className="text-xs font-semibold text-gray-500">{p.status}</span></div>
@@ -110,19 +114,12 @@ export default function ProjectShowcase() {
                                 <div>
                                     <p className="text-xs font-bold uppercase text-gray-400 mb-2 tracking-wider">Links</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {selected.github && selected.github !== "#" && (
-                                            <a href={selected.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 dark:bg-gray-800 text-white hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors text-sm font-semibold border border-gray-700">
-                                                <Github className="w-4 h-4" /> View on GitHub
+                                        {projectLinks(selected).map(l => (
+                                            <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-ieee-blue text-white hover:bg-ieee-blue/90 transition-colors text-sm font-semibold">
+                                                {/github\.com/i.test(l.url) ? <Github className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />} {l.label}
                                             </a>
-                                        )}
-                                        {selected.demo && selected.demo !== "#" && (
-                                            <a href={selected.demo} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-ieee-blue text-white hover:bg-ieee-blue/90 transition-colors text-sm font-semibold">
-                                                <ExternalLink className="w-4 h-4" /> Live Demo
-                                            </a>
-                                        )}
-                                        {(!selected.github || selected.github === "#") && (!selected.demo || selected.demo === "#") && (
-                                            <p className="text-sm text-gray-400 italic">No external links available yet.</p>
-                                        )}
+                                        ))}
+                                        <Link to="/projects" className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:border-ieee-blue">Photos & documents →</Link>
                                     </div>
                                 </div>
                             </div>

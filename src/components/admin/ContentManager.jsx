@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PlusCircle, Trash2, X, Sparkles, FolderOpen, BookOpen, Cpu, MessageSquare, Building, Newspaper, CheckCircle, XCircle, Clock, FileText, Send, Link2, ExternalLink, Star } from "lucide-react";
+import { PlusCircle, Trash2, X, Sparkles, FolderOpen, BookOpen, Cpu, MessageSquare, Building, Newspaper, CheckCircle, XCircle, Clock, FileText, Send, Link2, ExternalLink, Star, Video, Pencil } from "lucide-react";
 import { db } from "../../lib/backend";
 import { collection, onSnapshot, query, orderBy, doc, getDoc, updateDoc, serverTimestamp } from "../../lib/firestore";
 import { adminService } from "../../services/adminService";
 import { useToast } from "../../hooks/useToast";
+import { ProjectForm, SpotlightForm, AboutForm } from "./ShowcaseEditors";
 
 const TABS = [
     { key: "opportunities", label: "Opportunities", icon: Sparkles },
@@ -16,6 +17,7 @@ const TABS = [
     { key: "news", label: "News", icon: Newspaper },
     { key: "spotlights", label: "Spotlights", icon: Star },
     { key: "applications", label: "Applications", icon: FileText },
+    { key: "about", label: "Home: Who are we", icon: Video },
 ];
 
 // ── Generic modal wrapper ──
@@ -45,7 +47,8 @@ const inputCls = "w-full px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 bord
 export default function ContentManager() {
     const [tab, setTab] = useState("opportunities");
     const [data, setData] = useState({});
-    const [modal, setModal] = useState(null); // null | 'add' | 'sendForm'
+    const [modal, setModal] = useState(null); // null | 'add' | 'sendForm' | 'edit'
+    const [editing, setEditing] = useState(null);   // project / spotlight being edited
     const [sendFormApp, setSendFormApp] = useState(null);
     const [formUrl, setFormUrl] = useState("");
     const [formMessage, setFormMessage] = useState("");
@@ -54,7 +57,7 @@ export default function ContentManager() {
 
     // Subscribe to all collections
     useEffect(() => {
-        const unsubs = TABS.filter(t => t.key !== "applications").map(t => {
+        const unsubs = TABS.filter(t => t.key !== "applications" && t.key !== "about").map(t => {
             return onSnapshot(query(collection(db, t.key), orderBy("createdAt", "desc")), snap => {
                 setData(prev => ({ ...prev, [t.key]: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
             });
@@ -204,7 +207,9 @@ export default function ContentManager() {
 
             {/* Content */}
             <div className="p-6">
-                {tab !== "applications" && (
+                {tab === "about" ? <AboutForm /> : null}
+
+                {tab !== "applications" && tab !== "about" && (
                     <div className="flex justify-end mb-4">
                         <button onClick={() => setModal("add")} className="btn-primary text-sm !py-2 !px-4 flex items-center gap-2">
                             <PlusCircle className="w-4 h-4" /> Add {TABS.find(t => t.key === tab)?.label?.slice(0, -1) || "Item"}
@@ -213,7 +218,7 @@ export default function ContentManager() {
                 )}
 
                 {/* Items List */}
-                {items.length === 0 ? (
+                {tab === "about" ? null : items.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
                         <p className="text-sm">No {tab} added yet.</p>
                     </div>
@@ -280,6 +285,11 @@ export default function ContentManager() {
                                     <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{item.title || item.name || item.text?.slice(0, 50)}</p>
                                     <p className="text-xs text-gray-400 truncate">{item.category || item.full || item.role || item.tag || item.logo || ""}</p>
                                 </div>
+                                {(tab === "projects" || tab === "spotlights") && (
+                                    <button onClick={() => { setEditing(item); setModal("edit"); }} className="p-2 text-gray-400 hover:text-ieee-blue hover:bg-ieee-blue/10 rounded-lg transition-colors shrink-0 ml-2" aria-label={`Edit ${item.title || item.name}`}>
+                                        <Pencil className="w-4 h-4" />
+                                    </button>
+                                )}
                                 <button onClick={() => handleDelete(item.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0 ml-2">
                                     <Trash2 className="w-4 h-4" />
                                 </button>
@@ -291,7 +301,14 @@ export default function ContentManager() {
 
             {/* Add Modal */}
             <Modal open={modal === "add"} onClose={() => setModal(null)} title={`Add ${TABS.find(t => t.key === tab)?.label?.slice(0, -1) || "Item"}`}>
-                <AddForm type={tab} onSubmit={handleAdd} onClose={() => setModal(null)} />
+                {tab === "projects" ? <ProjectForm onClose={() => setModal(null)} />
+                    : tab === "spotlights" ? <SpotlightForm onClose={() => setModal(null)} />
+                        : <AddForm type={tab} onSubmit={handleAdd} onClose={() => setModal(null)} />}
+            </Modal>
+            <Modal open={modal === "edit" && !!editing} onClose={() => { setModal(null); setEditing(null); }} title={`Edit ${editing?.title || editing?.name || ""}`}>
+                {editing && (tab === "projects"
+                    ? <ProjectForm item={editing} onClose={() => { setModal(null); setEditing(null); }} />
+                    : <SpotlightForm item={editing} onClose={() => { setModal(null); setEditing(null); }} />)}
             </Modal>
 
             {/* Send Form Modal */}

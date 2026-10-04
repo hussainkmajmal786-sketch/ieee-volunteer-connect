@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { db } from "../../lib/backend";
 import { collection, query, orderBy, onSnapshot } from "../../lib/firestore";
+import { safeUrl } from "../../utils/links";
 
 const STATIC_SPOTLIGHTS = [
     { name: "Priya Sharma", role: "Branch Chair", avatar: "P", hours: 420, badges: ["Event Hero", "Core Volunteer", "Tech Mentor"], achievements: "Led 15+ events with 2000+ participants", gradient: "from-amber-400 to-yellow-300", rank: 1, bio: "Passionate about technology leadership and community building. Leading IEEE SB CEK to new heights.", linkedin: "https://linkedin.com/in/priya-sharma", github: "https://github.com/priyasharma", email: "priya@ieee.org", college: "CEK", branch: "Computer Science", year: "4th Year" },
@@ -63,7 +64,11 @@ export default function VolunteerSpotlight() {
                                 </div>
                             </div>
                             <div className="flex flex-col items-center mb-5">
-                                <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${vol.gradient} flex items-center justify-center text-white text-2xl font-black shadow-xl mb-3 group-hover:scale-105 transition-transform`}>{vol.avatar}</div>
+                                {vol.photoURL ? (
+                                    <img src={vol.photoURL} alt={vol.name} loading="lazy" className="w-20 h-20 rounded-2xl object-cover shadow-xl mb-3 group-hover:scale-105 transition-transform" />
+                                ) : (
+                                    <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${vol.gradient} flex items-center justify-center text-white text-2xl font-black shadow-xl mb-3 group-hover:scale-105 transition-transform`}>{vol.avatar}</div>
+                                )}
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">{vol.name}</h3>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">{vol.role}</p>
                             </div>
@@ -115,9 +120,13 @@ export default function VolunteerSpotlight() {
                                     <X className="w-5 h-5" />
                                 </button>
                                 <div className="flex items-center gap-4">
-                                    <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-3xl font-black shadow-xl border-2 border-white/30">
-                                        {selected.avatar}
-                                    </div>
+                                    {selected.photoURL ? (
+                                        <img src={selected.photoURL} alt="" className="w-20 h-20 rounded-2xl object-cover shadow-xl border-2 border-white/30" />
+                                    ) : (
+                                        <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-3xl font-black shadow-xl border-2 border-white/30">
+                                            {selected.avatar}
+                                        </div>
+                                    )}
                                     <div>
                                         <h3 className="text-2xl font-black text-white">{selected.name}</h3>
                                         <p className="text-white/80 font-semibold">{selected.role}</p>
@@ -165,14 +174,19 @@ export default function VolunteerSpotlight() {
                                 {/* Social Links */}
                                 <div>
                                     <p className="text-xs font-bold uppercase text-gray-400 mb-2 tracking-wider">Connect</p>
-                                    <div className="flex gap-2">
-                                        {selected.linkedin && (
-                                            <a href={selected.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-sm font-semibold">
+                                    <div className="flex flex-wrap gap-2">
+                                        {selected.userId && (
+                                            <Link to={`/volunteers/${selected.userId}`} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-ieee-blue text-white hover:bg-ieee-blue/90 transition-colors text-sm font-semibold">
+                                                Full portfolio
+                                            </Link>
+                                        )}
+                                        {safeUrl(selected.linkedin) && (
+                                            <a href={safeUrl(selected.linkedin)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-sm font-semibold">
                                                 <Linkedin className="w-4 h-4" /> LinkedIn
                                             </a>
                                         )}
-                                        {selected.github && (
-                                            <a href={selected.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-semibold">
+                                        {safeUrl(selected.github) && (
+                                            <a href={safeUrl(selected.github)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-semibold">
                                                 <Github className="w-4 h-4" /> GitHub
                                             </a>
                                         )}

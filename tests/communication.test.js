@@ -45,3 +45,16 @@ describe("Indian mobile numbers", () => {
         expect(indianMobile(undefined)).toBeNull();
     });
 });
+
+import { parseRange } from "../worker/files.js";
+describe("video range requests", () => {
+    it("parses byte ranges", () => {
+        expect(parseRange("bytes=0-1", 100)).toEqual({ start: 0, end: 1 });
+        expect(parseRange("bytes=10-", 100)).toEqual({ start: 10, end: 99 });
+        expect(parseRange("bytes=-20", 100)).toEqual({ start: 80, end: 99 });
+        expect(parseRange("bytes=0-999", 100)).toEqual({ start: 0, end: 99 });
+        expect(parseRange("bytes=200-300", 100)).toEqual({ invalid: true });
+        expect(parseRange(null, 100)).toBeNull();
+        expect(parseRange("items=0-1", 100)).toBeNull();
+    });
+});
