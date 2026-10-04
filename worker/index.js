@@ -17,6 +17,7 @@ import { createShare, listShares, downloadShare, deleteShare } from './sharedFil
 import { listParticipants, sendBatch } from './messaging.js';
 import { listPeople, getPerson, leaderboard, eventParticipants, uploadAvatar } from './people.js';
 import { putFile, getFile } from './files.js';
+import { getShortLink, resolveShortLink } from './shortLinks.js';
 import { getHook, updateHook, importRegistrations, receiveWebhook } from './externalRegistrations.js';
 
 const STATUS = {
@@ -249,6 +250,19 @@ app.get('/r/:eventId/:refId', async (c) => {
     const session = await getAuth(c.env).api.getSession({ headers: c.req.raw.headers }).catch(() => null);
     const auth = session?.user ? { uid: session.user.id } : null;
     return shortLink(c.env, c.req.raw, c.req.param('eventId'), c.req.param('refId'), auth);
+});
+
+// Short form of the same link: /s/<code>.
+app.post('/api/short-links', async (c) => {
+    const { eventId } = await c.req.json();
+    return c.json(await getShortLink(c.env, c.get('ctx'), eventId, new URL(c.req.url).origin));
+});
+app.get('/s/:code', async (c) => {
+    const link = await resolveShortLink(c.env.DB, c.req.param('code'));
+    if (!link) return c.redirect('/events', 302);
+    const session = await getAuth(c.env).api.getSession({ headers: c.req.raw.headers }).catch(() => null);
+    const auth = session?.user ? { uid: session.user.id } : null;
+    return shortLink(c.env, c.req.raw, link.eventId, link.refId, auth);
 });
 
 app.all('/api/*', (c) => c.json({ error: { code: 'not-found', message: 'Not found' } }, 404));

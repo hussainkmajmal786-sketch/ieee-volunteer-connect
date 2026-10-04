@@ -14,6 +14,7 @@ import MetaTags from "../shared/MetaTags";
 import { trackingService } from "../services/trackingService";
 import EventParticipants from "../components/EventParticipants";
 import { rememberReferral, resolveReferral, buildReferralLink } from "../utils/referral";
+import { getShortLink, copyText } from "../utils/shortLink";
 
 // Countdown Timer Component
 function CountdownTimer({ targetDate }) {
@@ -155,9 +156,21 @@ export default function EventDetailPage() {
 
     // Signed-in users share their own referral link, so anyone can promote
     // the event and get credited; visitors pass on the link they arrived with.
-    const shareUrl = user?.uid
-        ? buildReferralLink(window.location.origin, id, user.uid)
-        : window.location.href;
+    // Ambassadors choose between the full link and a short /s/<code> one.
+    const fullLink = user?.uid ? buildReferralLink(window.location.origin, id, user.uid) : null;
+    const [linkType, setLinkType] = useState('short');
+    const [shortLink, setShortLink] = useState({ id: null, url: null });
+    const wantShort = !!user?.uid && linkType === 'short';
+    useEffect(() => {
+        if (!wantShort) return;
+        let cancelled = false;
+        getShortLink(id)
+            .then(url => !cancelled && setShortLink({ id, url }))
+            .catch(() => !cancelled && setShortLink({ id, url: null }));
+        return () => { cancelled = true; };
+    }, [wantShort, id]);
+    const shortUrl = shortLink.id === id ? shortLink.url : null;
+    const shareUrl = !user?.uid ? window.location.href : wantShort && shortUrl ? shortUrl : fullLink;
 
     const goToSignIn = () => {
         trackingService.track('register_click', { element: 'sign_in_to_register', eventId: id, eventName: event?.name, refId: referredBy });
@@ -199,22 +212,11 @@ export default function EventDetailPage() {
 
     const handleCopyLink = async () => {
         trackingService.track('share_click', { element: 'copy_link', eventId: id, eventName: event?.name });
-        try {
-            await navigator.clipboard.writeText(shareUrl);
-            setCopied(true);
-            addToast('Event link copied to clipboard!', 'success');
-            setTimeout(() => setCopied(false), 2000);
-        } catch {
-            const textarea = document.createElement('textarea');
-            textarea.value = shareUrl;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            setCopied(true);
-            addToast('Event link copied!', 'success');
-            setTimeout(() => setCopied(false), 2000);
-        }
+        const url = wantShort ? await getShortLink(id).catch(() => fullLink) : shareUrl;
+        await copyText(url);
+        setCopied(true);
+        addToast(wantShort && url !== fullLink ? 'Short link copied!' : 'Event link copied to clipboard!', 'success');
+        setTimeout(() => setCopied(false), 2000);
     };
 
     const handleShareWhatsApp = () => {
@@ -388,6 +390,21 @@ export default function EventDetailPage() {
                             <h3 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                                 <Share2 className="w-4 h-4 text-ieee-blue" /> Share This Event
                             </h3>
+                            {user?.uid && (
+                                <div className="mb-3">
+                                    <div className="inline-flex p-1 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600" role="radiogroup" aria-label="Link type">
+                                        {[{ v: 'short', label: 'Short link' }, { v: 'full', label: 'Full link' }].map(o => (
+                                            <button key={o.v} type="button" role="radio" aria-checked={linkType === o.v} onClick={() => setLinkType(o.v)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${linkType === o.v ? 'bg-ieee-blue text-white' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>
+                                                {o.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 break-all font-mono" aria-live="polite">
+                                        {wantShort && !shortUrl ? 'Creating short link…' : shareUrl}
+                                    </p>
+                                </div>
+                            )}
                             <div className="flex flex-col sm:flex-row gap-3">
                                 <button onClick={handleCopyLink}
                                     className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all ${copied ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-ieee-blue hover:text-white border border-gray-200 dark:border-gray-600'}`}>

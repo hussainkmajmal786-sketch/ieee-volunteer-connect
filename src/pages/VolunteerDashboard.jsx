@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Award, Share2, CheckCircle, Clock, Calendar, ChevronRight, Copy, Check, Users, Sparkles, Target, ExternalLink, ShieldCheck, UserPlus } from "lucide-react";
+import { Award, Share2, CheckCircle, Clock, Calendar, ChevronRight, Copy, Check, Users, Sparkles, Target, ExternalLink, ShieldCheck, UserPlus, Link2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -9,6 +9,7 @@ import Button from "../components/Button";
 import { useToast } from "../hooks/useToast";
 import { getGrade, getNextGrade, getGradeProgress, getEarnedBadges, BADGES } from "../utils/grades";
 import { buildReferralLink } from "../utils/referral";
+import { getShortLink, copyText } from "../utils/shortLink";
 import ReferralStatsPanel from "../components/ReferralStatsPanel";
 import AmbassadorPanel from "../components/AmbassadorPanel";
 import SharedFilesPanel from "../components/SharedFilesPanel";
@@ -147,21 +148,20 @@ export default function VolunteerDashboard() {
         }
     };
 
-    const copyLink = async (eventId, eventName) => {
-        // Generate a personal referral link with the volunteer's UID
-        const url = buildReferralLink(window.location.origin, eventId, user.uid);
-        try {
-            await navigator.clipboard.writeText(url);
-        } catch {
-            const textarea = document.createElement('textarea');
-            textarea.value = url;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
+    // Personal referral link: full (/r/<event>/<uid>) or short (/s/<code>).
+    const copyLink = async (eventId, eventName, short = false) => {
+        let url = buildReferralLink(window.location.origin, eventId, user.uid);
+        if (short) {
+            try {
+                url = await getShortLink(eventId);
+            } catch {
+                addToast('Could not create a short link, copied the full link instead', 'error');
+                short = false;
+            }
         }
-        setCopiedLink(eventId);
-        addToast(`Personal referral link copied for "${eventName}" 🔗`, 'success');
+        await copyText(url);
+        setCopiedLink(`${eventId}:${short ? 'short' : 'full'}`);
+        addToast(`${short ? 'Short' : 'Full'} referral link copied for "${eventName}" 🔗`, 'success');
         setTimeout(() => setCopiedLink(null), 2000);
     };
 
@@ -483,9 +483,16 @@ export default function VolunteerDashboard() {
                                             <p className="text-[10px] text-gray-400 flex items-center gap-1"><Users className="w-3 h-3" /> {evt.participants || 0} registered</p>
                                         </div>
                                     </div>
-                                    <button onClick={() => copyLink(evt.id, evt.name)} className="p-2 shrink-0 rounded-lg bg-gray-50 dark:bg-gray-800 text-ieee-blue hover:bg-ieee-blue hover:text-white transition">
-                                        {copiedLink === evt.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                                    </button>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <button onClick={() => copyLink(evt.id, evt.name, true)} title="Copy short link" aria-label={`Copy short link for ${evt.name}`}
+                                            className="px-2.5 py-2 rounded-lg bg-ieee-blue/10 text-ieee-blue text-xs font-bold hover:bg-ieee-blue hover:text-white transition flex items-center gap-1">
+                                            {copiedLink === `${evt.id}:short` ? <Check className="w-4 h-4 text-green-500" /> : <Link2 className="w-4 h-4" />} Short
+                                        </button>
+                                        <button onClick={() => copyLink(evt.id, evt.name)} title="Copy full link" aria-label={`Copy full link for ${evt.name}`}
+                                            className="p-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-ieee-blue hover:bg-ieee-blue hover:text-white transition">
+                                            {copiedLink === `${evt.id}:full` ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

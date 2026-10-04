@@ -37,7 +37,8 @@ self.addEventListener('activate', (event) => {
 });
 
 function isApiOrAuthRequest(url) {
-    if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) return true;
+    // /api is live data; /r/ and /s/ are tracked ambassador redirects.
+    if (url.origin === self.location.origin && /^\/(api|r|s)\//.test(url.pathname)) return true;
     return /(googleapis|googletagmanager|gstatic)/i.test(url.host);
 }
 
