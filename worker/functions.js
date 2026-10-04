@@ -5,14 +5,14 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const LINK_CLICK_LIMIT_PER_WINDOW = 10;
 const LINK_CLICK_LIMIT_PER_IP = 120;
 
-function requireString(value, field, maxLength) {
+export function requireString(value, field, maxLength) {
     if (typeof value !== 'string' || value.trim().length === 0 || value.length > maxLength) {
         throw new DocError('invalid-argument', `${field} is required`);
     }
     return value.trim();
 }
 
-function optionalString(value, maxLength) {
+export function optionalString(value, maxLength) {
     if (value == null || value === '') return null;
     if (typeof value !== 'string' || value.length > maxLength) {
         throw new DocError('invalid-argument', 'Invalid string field');
@@ -20,7 +20,7 @@ function optionalString(value, maxLength) {
     return value.trim();
 }
 
-function validateEmail(value) {
+export function validateEmail(value) {
     const email = requireString(value, 'email', 200).toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new DocError('invalid-argument', 'Invalid email');
     return email;
@@ -31,7 +31,7 @@ export function safeFieldKey(value) {
     return String(value).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
 }
 
-async function sha256Hex(value) {
+export async function sha256Hex(value) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(value)));
     return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 48);
 }
@@ -99,16 +99,44 @@ export async function registerForEvent(env, auth, data) {
     return { ok: true };
 }
 
+/** Per-visitor limit with a per-IP ceiling (campus Wi-Fi shares one IP). */
+export async function limitClicks(db, { uid, ip, visitorId }) {
+    const ipKey = `ip_${await sha256Hex(ip || 'unknown')}`;
+    const subject = uid ? `uid_${uid}` : visitorId ? `${ipKey}_${await sha256Hex(visitorId)}` : ipKey;
+    await rateLimit(db, `linkClicks:${subject}`, LINK_CLICK_LIMIT_PER_WINDOW, RATE_LIMIT_WINDOW_MS);
+    if (!uid) await rateLimit(db, `linkClicks:${ipKey}:all`, LINK_CLICK_LIMIT_PER_IP, RATE_LIMIT_WINDOW_MS);
+    return subject;
+}
+
+/**
+ * Count an ambassador-link visit on the event's counters (clicks, and unique
+ * visitors the first time this visitor arrives through this ambassador).
+ */
+export async function creditReferralVisit(db, { eventId, refId, uid, visitorKey }) {
+    const refKey = safeFieldKey(refId);
+    const eventKey = safeFieldKey(eventId);
+    if (!refKey || !eventKey || refKey === uid) return false;
+    if (!(await getDocRow(db, `events/${eventKey}`))) return false;
+
+    const visitId = await sha256Hex(`${eventKey}|${refKey}|${visitorKey}`);
+    let firstVisit = false;
+    await writeDoc(db, `referralVisits/${visitId}`, (before) => {
+        if (before) return before;
+        firstVisit = true;
+        return { eventId: eventKey, refId: refKey, userId: uid, firstSeen: { __ts: Date.now() } };
+    });
+
+    const counters = { [`refClicks.${refKey}`]: { __op: 'increment', n: 1 } };
+    if (firstVisit) counters[`refVisitors.${refKey}`] = { __op: 'increment', n: 1 };
+    await updateFields(db, `events/${eventKey}`, counters);
+    return true;
+}
+
 export async function recordLinkClick(env, auth, data, ip) {
     const db = env.DB;
     const uid = auth?.uid || null;
-    // Campus Wi-Fi puts many students behind one IP, so anonymous visitors
-    // are limited per browser, with a much higher ceiling per IP for spam.
-    const ipKey = `ip_${await sha256Hex(ip || 'unknown')}`;
-    const visitor = optionalString(data?.visitorId, 128);
-    const subject = uid ? `uid_${uid}` : visitor ? `${ipKey}_${await sha256Hex(visitor)}` : ipKey;
-    await rateLimit(db, `linkClicks:${subject}`, LINK_CLICK_LIMIT_PER_WINDOW, RATE_LIMIT_WINDOW_MS);
-    if (!uid) await rateLimit(db, `linkClicks:${ipKey}:all`, LINK_CLICK_LIMIT_PER_IP, RATE_LIMIT_WINDOW_MS);
+    const visitorId = optionalString(data?.visitorId, 128);
+    const subject = await limitClicks(db, { uid, ip, visitorId });
 
     const eventType = requireString(data?.eventType || 'event', 'eventType', 64);
     const payload = {
@@ -122,7 +150,7 @@ export async function recordLinkClick(env, auth, data, ip) {
         eventName: optionalString(data?.eventName, 200),
         refId: optionalString(data?.refId, 128),
         sessionId: optionalString(data?.sessionId, 128),
-        visitorId: optionalString(data?.visitorId, 128),
+        visitorId,
         device: optionalString(data?.device, 40),
         userId: uid,
         timestamp: { __ts: Date.now() },
@@ -131,27 +159,14 @@ export async function recordLinkClick(env, auth, data, ip) {
 
     // Ambassador link visits feed per-event counters so ambassadors (who
     // cannot read linkClicks) can see their own funnel on the event document.
-    const refKey = safeFieldKey(payload.refId);
-    const eventKey = safeFieldKey(payload.eventId);
-    if (eventType !== 'referral_visit' || !refKey || !eventKey || refKey === uid) return { ok: true };
-    if (!(await getDocRow(db, `events/${eventKey}`))) return { ok: true };
-
-    const visitorKey = uid ? `uid_${uid}` : payload.visitorId || payload.sessionId || subject;
-    const visitId = await sha256Hex(`${eventKey}|${refKey}|${visitorKey}`);
-    let firstVisit = false;
-    await writeDoc(db, `referralVisits/${visitId}`, (before) => {
-        if (before) return before;
-        firstVisit = true;
-        return { eventId: eventKey, refId: refKey, userId: uid, firstSeen: { __ts: Date.now() } };
-    });
-
-    const counters = { [`refClicks.${refKey}`]: { __op: 'increment', n: 1 } };
-    if (firstVisit) counters[`refVisitors.${refKey}`] = { __op: 'increment', n: 1 };
-    await updateFields(db, `events/${eventKey}`, counters);
+    if (eventType === 'referral_visit') {
+        const visitorKey = uid ? `uid_${uid}` : visitorId || payload.sessionId || subject;
+        await creditReferralVisit(db, { eventId: payload.eventId, refId: payload.refId, uid, visitorKey });
+    }
     return { ok: true };
 }
 
 // Server-trusted field update (no rules check).
-async function updateFields(db, path, fields) {
+export async function updateFields(db, path, fields) {
     await writeDoc(db, path, (before) => (before ? applyUpdate(before, fields) : null));
 }

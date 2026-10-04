@@ -33,6 +33,31 @@ async function isVolunteer(ctx) {
 
 const isOwner = (ctx, uid) => isSignedIn(ctx) && ctx.auth.uid === uid;
 
+export { isSuperAdmin, isAdmin };
+
+/** Fields on users/{uid} that only admins (via server endpoints) may set. */
+const PROTECTED_USER_FIELDS = ['ambassadorType', 'campusAmbassadorId', 'campusAmbassadorName'];
+
+/** Event fields that decide where shared links go — super admin only. */
+const LINK_FIELDS = ['linkMode', 'externalUrl'];
+
+export const LINK_MODES = ['site', 'external'];
+
+export function isValidExternalUrl(url) {
+    if (typeof url !== 'string' || url.length > 2000) return false;
+    try {
+        const u = new URL(url);
+        return u.protocol === 'https:' || u.protocol === 'http:';
+    } catch {
+        return false;
+    }
+}
+
+function validLinkFields(d) {
+    if (d.linkMode === undefined || d.linkMode === 'site') return d.externalUrl === undefined || d.externalUrl === '' || isValidExternalUrl(d.externalUrl);
+    return d.linkMode === 'external' && isValidExternalUrl(d.externalUrl);
+}
+
 export function isValidString(value, maxLen) {
     return typeof value === 'string' && value.length > 0 && value.length <= maxLen;
 }
@@ -55,14 +80,23 @@ function isValidParticipantCounterUpdate(ctx, before, after) {
 
 /**
  * Can the caller list/read documents in this collection?
- * None of the original read rules depended on document contents, so this is
- * decided per collection.
+ * Returns true/false, or a list of {field, value} scopes: the caller may only
+ * read documents whose `field` equals `value` (queries must filter on one).
  */
 export async function canRead(collectionPath, ctx) {
     const s = collectionPath.split('/');
     if (s.length === 1) {
         const [col] = s;
-        if (col === 'events' || PUBLIC_CONTENT.includes(col)) return true;
+        if (col === 'events' || col === 'settings' || PUBLIC_CONTENT.includes(col)) return true;
+        if (col === 'inbox') {
+            if (!isSignedIn(ctx)) return false;
+            return (await isAdmin(ctx)) || [{ field: 'userId', value: ctx.auth.uid }];
+        }
+        if (col === 'ambassadorApplications') {
+            if (!isSignedIn(ctx)) return false;
+            if (await isAdmin(ctx)) return true;
+            return [{ field: 'campusAmbassadorId', value: ctx.auth.uid }, { field: 'userId', value: ctx.auth.uid }];
+        }
         if (['users', 'tasks', 'teams', 'rewards', 'claims', 'notifications', 'resources', 'applications'].includes(col)) {
             return isSignedIn(ctx);
         }
@@ -97,13 +131,22 @@ export async function canWrite(op, path, before, after, ctx) {
     const d = after || {};
 
     switch (col) {
-        case 'events':
+        case 'events': {
+            if (op === 'delete') return isAdmin(ctx);
+            const linkChanged = op === 'create'
+                ? (d.linkMode && d.linkMode !== 'site') || !!d.externalUrl
+                : changedKeys(before, after).some(k => LINK_FIELDS.includes(k));
+            if (linkChanged && !((await isSuperAdmin(ctx)) && validLinkFields(d))) return false;
             if (op === 'create') return (await isAdmin(ctx)) && isValidString(d.name, 200) && isValidString(d.venue, 200);
-            if (op === 'update') return (await isAdmin(ctx)) || isValidParticipantCounterUpdate(ctx, before, after);
-            return isAdmin(ctx);
+            return (await isAdmin(ctx)) || isValidParticipantCounterUpdate(ctx, before, after);
+        }
+
+        case 'settings':
+            return isSuperAdmin(ctx);
 
         case 'users':
             if (op === 'create') {
+                if (!(await isAdmin(ctx)) && PROTECTED_USER_FIELDS.some(f => d[f] !== undefined)) return false;
                 return (isOwner(ctx, id)
                     && isValidString(d.name, 100)
                     && d.role === 'STUDENT'
@@ -114,6 +157,7 @@ export async function canWrite(op, path, before, after, ctx) {
             if (op === 'update') {
                 if (await isAdmin(ctx)) return true;
                 if (!isOwner(ctx, id)) return false;
+                if (changedKeys(before, after).some(k => PROTECTED_USER_FIELDS.includes(k))) return false;
                 const roleOk = d.role === before.role || (before.role === 'STUDENT' && d.role === 'VOLUNTEER');
                 const statusOk = d.approvalStatus === before.approvalStatus
                     || (before.approvalStatus === 'PENDING' && d.approvalStatus === 'ACTIVE')

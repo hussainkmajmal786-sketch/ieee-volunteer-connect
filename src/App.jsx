@@ -23,6 +23,7 @@ const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ResourcesPage = lazy(() => import("./pages/ResourcesPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const ClassAmbassadorApplyPage = lazy(() => import("./pages/ClassAmbassadorApplyPage"));
 
 function PageLoader() {
   return (
@@ -80,6 +81,7 @@ function App() {
             <Route index element={<LandingPage />} />
             <Route path="auth" element={<AuthPage />} />
             <Route path="reset-password" element={<ResetPasswordPage />} />
+            <Route path="ambassador/apply" element={<ClassAmbassadorApplyPage />} />
             <Route path="events" element={<EventsPage />} />
             <Route path="event/:id" element={<EventDetailPage />} />
             <Route path="leaderboard" element={<LeaderboardPage />} />

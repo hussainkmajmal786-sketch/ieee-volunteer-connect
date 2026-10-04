@@ -12,11 +12,12 @@ import {
     writeDoc, applySet, applyUpdate,
 } from './docstore.js';
 import { registerForEvent, recordLinkClick } from './functions.js';
+import { applyClassAmbassador, reviewApplication, notifyAmbassadors, shortLink } from './ambassadors.js';
 import { putFile, getFile } from './files.js';
 
 const STATUS = {
     'invalid-argument': 400, unauthenticated: 401, 'permission-denied': 403, 'not-found': 404,
-    'already-exists': 409, aborted: 409, 'resource-exhausted': 429,
+    'already-exists': 409, aborted: 409, 'resource-exhausted': 429, 'failed-precondition': 412,
 };
 const MAX_POLL_SUBS = 40;
 
@@ -45,16 +46,26 @@ app.on(['GET', 'POST'], '/api/auth/*', (c) => getAuth(c.env).handler(c.req.raw))
 
 // ─── Documents ───────────────────────────────────────────────
 
+const denied = () => new DocError('permission-denied', 'Missing or insufficient permissions.');
+
 async function readDoc(c, path) {
     const { parent, id } = splitDocPath(path);
-    if (!(await canRead(parent, c.get('ctx')))) throw new DocError('permission-denied', 'Missing or insufficient permissions.');
+    const access = await canRead(parent, c.get('ctx'));
+    if (!access) throw denied();
     const row = await getDocRow(c.env.DB, path);
+    // Scoped collections: only documents that belong to the caller.
+    if (Array.isArray(access) && row && !access.some(s => row.data?.[s.field] === s.value)) throw denied();
     return { id, exists: !!row, data: row?.data ?? null };
 }
 
 async function readQuery(c, parent, spec) {
     parsePath(parent, 'collection');
-    if (!(await canRead(parent, c.get('ctx')))) throw new DocError('permission-denied', 'Missing or insufficient permissions.');
+    const access = await canRead(parent, c.get('ctx'));
+    if (!access) throw denied();
+    if (Array.isArray(access)) {
+        const scoped = (spec?.filters || []).some(f => f.op === '==' && access.some(s => s.field === f.field && s.value === f.value));
+        if (!scoped) throw denied();
+    }
     if (spec?.count) return { count: await runQuery(c.env.DB, parent, spec) };
     return { docs: await runQuery(c.env.DB, parent, spec || {}) };
 }
@@ -126,6 +137,7 @@ app.post('/api/fn/:name', async (c) => {
     switch (c.req.param('name')) {
         case 'registerForEvent': return c.json({ data: await registerForEvent(c.env, auth, data) });
         case 'recordLinkClick': return c.json({ data: await recordLinkClick(c.env, auth, data, c.req.header('CF-Connecting-IP')) });
+        case 'applyClassAmbassador': return c.json({ data: await applyClassAmbassador(c.env, auth, data) });
         default: throw new DocError('not-found', 'Unknown function');
     }
 });
@@ -155,6 +167,15 @@ app.post('/api/admin/users', async (c) => {
     return c.json({ uid });
 });
 
+// Super admin: message campus / class / both / selected ambassadors.
+app.post('/api/admin/notify', async (c) => c.json(await notifyAmbassadors(c.env, c.get('ctx'), await c.req.json())));
+
+// Super admin: approve or reject a Class Ambassador application.
+app.post('/api/admin/ambassador-applications/:id', async (c) => {
+    const { status } = await c.req.json();
+    return c.json(await reviewApplication(c.env, c.get('ctx'), c.req.param('id'), status));
+});
+
 app.post('/api/upload', async (c) => {
     const ctx = c.get('ctx');
     const form = await c.req.formData();
@@ -173,6 +194,13 @@ app.get('/files/*', async (c) => {
     const key = decodeURIComponent(c.req.path.slice('/files/'.length));
     const res = await getFile(c.env, key);
     return res || c.notFound();
+});
+
+// Ambassador short links: tracked, then sent to this site or the main website.
+app.get('/r/:eventId/:refId', async (c) => {
+    const session = await getAuth(c.env).api.getSession({ headers: c.req.raw.headers }).catch(() => null);
+    const auth = session?.user ? { uid: session.user.id } : null;
+    return shortLink(c.env, c.req.raw, c.req.param('eventId'), c.req.param('refId'), auth);
 });
 
 app.all('/api/*', (c) => c.json({ error: { code: 'not-found', message: 'Not found' } }, 404));

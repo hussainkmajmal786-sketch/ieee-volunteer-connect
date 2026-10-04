@@ -86,7 +86,7 @@ export default function Navbar() {
 
     const isActive = (path) => location.pathname === path;
     // Return visitors to the event they were viewing (keeps ?ref= attribution).
-    const authReturnState = location.pathname.startsWith("/event/") ? { from: location } : undefined;
+    const authReturnState = /^\/(event\/|ambassador\/)/.test(location.pathname) ? { from: location } : undefined;
     const userInitial = user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "?";
 
     const handleSignOut = async () => {

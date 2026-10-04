@@ -11,6 +11,8 @@ A volunteer management platform for IEEE student branches — events, tasks, poi
 - **Events** — Public event listing with categories, search, real-time updates, registration with duplicate detection, countdown timers, and per-event analytics.
 - **Volunteer dashboard** — Personal task list, points display, personal referral links, "My Referral Performance" (clicks → unique visitors → registrations, and who registered), auto-completion when referral targets are hit, and badge progression.
 - **Admin dashboard** — Full CRUD over events, volunteers, tasks, teams, and rewards. Live analytics, link-tracking panel, Ambassador Monitor (per-ambassador funnel with registrant details + CSV), image uploads with cropping, participant analytics, and registration management.
+- **Ambassador program** — Campus Ambassadors (set by the super admin) recruit Class Ambassadors through a personal application form; applications reach the campus ambassador and the super admin, who approves them. The super admin can notify campus ambassadors, class ambassadors, both, or chosen people.
+- **Tracked short links** — ambassador links (`/r/<event>/<ambassador>`) are counted server-side and lead either to this site's registration or to the event's main-website page (super admin's choice per event).
 - **Leaderboard** — Public rankings by points with grade tiers and badge display.
 - **Auth** — Email/password, Google sign-in, password reset (Better Auth). Role-based access (`STUDENT` → `VOLUNTEER` → `ADMIN` → `SUPER_ADMIN`).
 - **PWA** — Installable, offline page, service worker.
@@ -119,6 +121,9 @@ tests/                  # vitest suites
 - **Registrations** — created only by the server endpoint · readable by admins and volunteers
 - **Users** — signed-in read · self-signup only as `STUDENT` with 0 points · no self-promotion to ADMIN/SUPER_ADMIN
 - **linkClicks / referralVisits** — server-written · admin read
+- **inbox** — each user reads only their own messages · written by the server
+- **ambassadorApplications** — campus ambassadors read their own recruits, applicants their own · approvals by the super admin only
+- **Event link destination, ambassador roles, form settings** — super admin only
 - **Uploads** — admins only, JPEG/PNG/WebP/GIF under 5 MB, fixed folders
 - **Default** — deny
 

@@ -5,7 +5,7 @@ import Button from "../components/Button";
 import { useToast } from "../hooks/useToast";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../lib/backend";
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, getDocs, getDoc, increment, serverTimestamp } from "../lib/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, getDocs, getDoc, increment, serverTimestamp, deleteField } from "../lib/firestore";
 import { uploadImage as uploadToStorage } from '../utils/upload';
 import { api } from "../lib/api";
 import { getCroppedImg } from '../utils/cropImage';
@@ -26,6 +26,7 @@ import TeamList from '../components/admin/TeamList';
 import RewardList from '../components/admin/RewardList';
 import LinkTrackingPanel from '../components/admin/LinkTrackingPanel';
 import AmbassadorMonitor from '../components/admin/AmbassadorMonitor';
+import AmbassadorProgram from '../components/admin/AmbassadorProgram';
 import ContentManager from '../components/admin/ContentManager';
 
 // Modals
@@ -50,7 +51,7 @@ export default function AdminDashboard() {
     const [showRegistrationsModal, setShowRegistrationsModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentEventId, setCurrentEventId] = useState(null);
-    const [newEvent, setNewEvent] = useState({ name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '' });
+    const [newEvent, setNewEvent] = useState({ name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '', linkMode: 'site', externalUrl: '' });
     const [newVolunteer, setNewVolunteer] = useState({ name: '', email: '', password: '', branch: 'IEEE Student Branch', college: '' });
     const [creationError, setCreationError] = useState('');
     const [imageFile, setImageFile] = useState(null);
@@ -429,7 +430,9 @@ export default function AdminDashboard() {
             venue: event.venue, 
             desc: event.desc, 
             category: event.category || 'Workshop', 
-            imageUrl: event.imageUrl || '' 
+            imageUrl: event.imageUrl || '',
+            linkMode: event.linkMode || 'site',
+            externalUrl: event.externalUrl || ''
         });
         if (event.imageUrl) setImagePreview(event.imageUrl);
         setShowModal(true);
@@ -438,7 +441,7 @@ export default function AdminDashboard() {
     const closeModal = () => {
         setShowModal(false);
         setIsEditing(false);
-        setNewEvent({ name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '' });
+        setNewEvent({ name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '', linkMode: 'site', externalUrl: '' });
         setImageFile(null); 
         setImagePreview(null); 
         setCrop({ unit: '%', width: 100, aspect: 16 / 9 });
@@ -502,6 +505,26 @@ export default function AdminDashboard() {
     };
 
     // ── SUPER ADMIN ONLY: Promote to Sub Admin ──
+    const handleToggleCampusAmbassador = async (vol) => {
+        if (!isSuperAdmin) return;
+        const making = vol.ambassadorType !== 'campus';
+        if (!window.confirm(making ? `Make "${vol.name}" a Campus Ambassador?` : `Remove "${vol.name}" as Campus Ambassador?`)) return;
+        try {
+            // Ambassadors need an active volunteer account to see their dashboard tools.
+            const activate = making ? {
+                approvalStatus: 'ACTIVE',
+                ...(vol.role === ROLES.STUDENT || !vol.role ? { role: ROLES.VOLUNTEER } : {}),
+            } : {};
+            await updateDoc(doc(db, "users", vol.id), making
+                ? { ambassadorType: 'campus', campusAmbassadorId: deleteField(), campusAmbassadorName: deleteField(), ...activate }
+                : { ambassadorType: deleteField() });
+            addToast(making ? `"${vol.name}" is now a Campus Ambassador` : `"${vol.name}" is no longer a Campus Ambassador`, 'success');
+        } catch (err) {
+            console.error(err);
+            addToast('Failed to update ambassador status', 'error');
+        }
+    };
+
     const handlePromoteToAdmin = async (id, name) => {
         if (!isSuperAdmin) return;
         if (window.confirm(`Promote "${name}" to Sub Admin?`)) {
@@ -660,6 +683,7 @@ export default function AdminDashboard() {
                             handleResetPoints={handleResetPoints}
                             handlePromoteToAdmin={handlePromoteToAdmin}
                             handleDemoteAdmin={handleDemoteAdmin}
+                            handleToggleCampusAmbassador={handleToggleCampusAmbassador}
                         />
                     </div>
                 </div>
@@ -686,12 +710,16 @@ export default function AdminDashboard() {
                 {/* ── Ambassador referral funnel ── */}
                 <AmbassadorMonitor events={events} volunteers={volunteers} />
 
+                {/* ── Campus / Class ambassadors (super admin) ── */}
+                {isSuperAdmin && <AmbassadorProgram users={volunteers} />}
+
                 {/* ── Super Admin Content Manager ── */}
                 {isSuperAdmin && <ContentManager />}
             </div>
 
             {/* Modals Container */}
             <EventModal
+                isSuperAdmin={isSuperAdmin}
                 showModal={showModal}
                 closeModal={closeModal}
                 isEditing={isEditing}

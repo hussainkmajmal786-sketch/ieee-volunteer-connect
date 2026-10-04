@@ -59,7 +59,7 @@ describe("referral attribution", () => {
     });
 
     it("builds an encoded referral link", () => {
-        expect(buildReferralLink("https://x.app", "evt1", "amb_A")).toBe("https://x.app/event/evt1?ref=amb_A");
+        expect(buildReferralLink("https://x.app", "evt1", "amb_A")).toBe("https://x.app/r/evt1/amb_A");
     });
 });
 

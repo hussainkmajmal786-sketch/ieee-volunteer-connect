@@ -1,5 +1,5 @@
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn } from "lucide-react";
+import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn, ExternalLink } from "lucide-react";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -111,14 +111,35 @@ export default function EventDetailPage() {
     const [dismissedNotifs, setDismissedNotifs] = useState(new Set());
     const namedViewRef = useRef(null);
 
-    // Track page view + referral visit on mount
+    // Track the page view on mount
     useEffect(() => {
         trackingService.track('page_view', { eventId: id });
-        // Only an actual open of an ambassador link counts as a referral visit.
-        if (urlRef) {
+    }, [id]);
+
+    // Events can send registrations to the main website (super admin's choice).
+    const externalUrl = event?.linkMode === 'external' && /^https?:\/\//i.test(event?.externalUrl || '') ? event.externalUrl : null;
+
+    // An ambassador link opened directly (/event/:id?ref=…): count it once the
+    // event is known, or hand it to the tracked redirect for main-website events.
+    const visitTrackedRef = useRef(null);
+    useEffect(() => {
+        if (!urlRef || !event || visitTrackedRef.current === `${id}|${urlRef}`) return;
+        visitTrackedRef.current = `${id}|${urlRef}`;
+        if (externalUrl) {
+            window.location.replace(`/r/${encodeURIComponent(id)}/${encodeURIComponent(urlRef)}`);
+        } else {
             trackingService.track('referral_visit', { eventId: id, refId: urlRef });
         }
-    }, [id, urlRef]);
+    }, [id, urlRef, event, externalUrl]);
+
+    const goToMainWebsite = () => {
+        if (referredBy) {
+            window.location.href = `/r/${encodeURIComponent(id)}/${encodeURIComponent(referredBy)}`;
+        } else {
+            trackingService.track('register_click', { element: 'main_website', eventId: id, eventName: event?.name });
+            window.location.href = externalUrl;
+        }
+    };
 
     // Prefill the form from the signed-in account
     useEffect(() => {
@@ -395,11 +416,28 @@ export default function EventDetailPage() {
                         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-xl">
                             <div className="bg-gradient-to-r from-ieee-blue to-cyan-500 p-5 text-white">
                                 <h3 className="text-lg font-bold">Register for this Event</h3>
-                                <p className="text-white/80 text-xs mt-1">Fill in your details below to secure your spot</p>
+                                <p className="text-white/80 text-xs mt-1">{externalUrl ? 'Registration is on the official website' : 'Fill in your details below to secure your spot'}</p>
                             </div>
 
                             <AnimatePresence mode="wait">
-                                {registered ? (
+                                {externalUrl ? (
+                                    <motion.div key="external" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 text-center space-y-4">
+                                        <div className="w-14 h-14 mx-auto bg-ieee-blue/10 rounded-full flex items-center justify-center">
+                                            <ExternalLink className="w-7 h-7 text-ieee-blue" />
+                                        </div>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                                            This event takes registrations on the IEEE CEK main website.
+                                        </p>
+                                        <Button onClick={goToMainWebsite} className="w-full py-3 text-base shadow-lg hover:shadow-xl">
+                                            Register on Main Website
+                                        </Button>
+                                        {user && (
+                                            <button onClick={handleCopyLink} className="flex items-center justify-center gap-2 mx-auto px-5 py-2 rounded-xl text-sm font-semibold bg-ieee-blue/10 text-ieee-blue hover:bg-ieee-blue hover:text-white transition">
+                                                <Copy className="w-4 h-4" /> Copy My Referral Link
+                                            </button>
+                                        )}
+                                    </motion.div>
+                                ) : registered ? (
                                     <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="p-8 text-center">
                                         <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
                                             <CheckCircle className="w-8 h-8 text-green-500" />

@@ -30,6 +30,7 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
 
     const [registrations, setRegistrations] = useState({ eventId: null, list: [] });
     const [openRef, setOpenRef] = useState(null);
+    const [typeFilter, setTypeFilter] = useState('all');
     const loading = registrations.eventId !== eventId;
 
     useEffect(() => {
@@ -52,7 +53,13 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
     const nameOf = (uid, fallback) =>
         volunteers.find(v => v.id === uid || v.uid === uid)?.name || fallback || 'Unknown ambassador';
 
-    const rows = useMemo(() => (event ? ambassadorRows(event) : []), [event]);
+    const typeOf = (uid) => volunteers.find(v => v.id === uid || v.uid === uid)?.ambassadorType || null;
+    const allRows = useMemo(() => (event ? ambassadorRows(event) : []), [event]);
+    const rows = useMemo(() => (typeFilter === 'all' ? allRows : allRows.filter(r => {
+        const t = volunteers.find(v => v.id === r.refId || v.uid === r.refId)?.ambassadorType || 'other';
+        return t === typeFilter;
+    })), [allRows, typeFilter, volunteers]);
+    const isExternal = event?.linkMode === 'external';
     const byRef = useMemo(() => {
         const map = {};
         registrations.list.forEach(r => {
@@ -98,8 +105,22 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
                         <Megaphone className="w-5 h-5 text-ieee-blue" /> Ambassador Monitor
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Clicks, visitors and registrations per ambassador link.</p>
+                    {isExternal && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">This event sends people to the main website — registrations happen there, so only clicks and visitors are counted.</p>
+                    )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                    <select
+                        value={typeFilter}
+                        onChange={(e) => { setTypeFilter(e.target.value); setOpenRef(null); }}
+                        className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-ieee-blue outline-none"
+                        aria-label="Ambassador type"
+                    >
+                        <option value="all">All ambassadors</option>
+                        <option value="campus">Campus ambassadors</option>
+                        <option value="class">Class ambassadors</option>
+                        <option value="other">Other volunteers</option>
+                    </select>
                     <select
                         value={eventId}
                         onChange={(e) => { setSelectedId(e.target.value); setOpenRef(null); }}
@@ -149,7 +170,14 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
                                 return [
                                     <tr key={r.refId} onClick={() => setOpenRef(open ? null : r.refId)}
                                         className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 transition">
-                                        <td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">{nameOf(r.refId, list[0]?.referrerName)}</td>
+                                        <td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">
+                                            {nameOf(r.refId, list[0]?.referrerName)}
+                                            {typeOf(r.refId) && (
+                                                <span className={`ml-2 text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase ${typeOf(r.refId) === 'campus' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'}`}>
+                                                    {typeOf(r.refId)}
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 text-sm tabular-nums text-gray-600 dark:text-gray-300">{r.clicks}</td>
                                         <td className="px-4 py-3 text-sm tabular-nums text-gray-600 dark:text-gray-300">{r.visitors}</td>
                                         <td className="px-4 py-3 text-sm tabular-nums font-bold text-green-600 dark:text-green-400">{r.registrations}</td>

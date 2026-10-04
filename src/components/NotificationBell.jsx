@@ -6,6 +6,7 @@ import {
     query,
     orderBy,
     limit,
+    where,
     onSnapshot,
 } from "../lib/firestore";
 import { db } from "../lib/backend";
@@ -36,7 +37,12 @@ function formatRelative(ts) {
 export default function NotificationBell() {
     const { user } = useAuth();
     const [open, setOpen] = useState(false);
-    const [items, setItems] = useState([]);
+    const [globalItems, setGlobalItems] = useState([]);
+    const [inboxItems, setInboxItems] = useState([]);
+    // Broadcasts plus this user's private inbox (ambassador messages), newest first.
+    const items = useMemo(() => [...inboxItems, ...globalItems]
+        .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))
+        .slice(0, 15), [inboxItems, globalItems]);
     const [lastRead, setLastRead] = useState(() => {
         const stored = localStorage.getItem(READ_KEY);
         return stored ? parseInt(stored, 10) : 0;
@@ -52,34 +58,37 @@ export default function NotificationBell() {
         return () => document.removeEventListener("mousedown", onClick);
     }, []);
 
-    // Subscribe to notifications (only while authenticated — collection is gated)
+    // Subscribe to notifications (only while authenticated — collection is gated).
+    // Keyed on the uid so live profile updates (points…) don't resubscribe.
+    const uid = user?.uid || null;
     useEffect(() => {
-        if (!user) return undefined;
+        if (!uid) return undefined;
         const qRef = query(
             collection(db, "notifications"),
             orderBy("createdAt", "desc"),
             limit(10)
         );
-        const unsub = onSnapshot(
+        const unsubGlobal = onSnapshot(
             qRef,
-            (snap) => {
-                const rows = [];
-                snap.forEach((d) => rows.push({ id: d.id, ...d.data() }));
-                setItems(rows);
-            },
+            (snap) => setGlobalItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
             (error) => {
-                console.error("[NotificationBell] Firestore error:", error.code, error.message);
-                setItems([]);
+                console.error("[NotificationBell] notifications error:", error.code, error.message);
+                setGlobalItems([]);
             }
         );
-        return unsub;
-    }, [user]);
+        const unsubInbox = onSnapshot(
+            query(collection(db, "inbox"), where("userId", "==", uid), orderBy("createdAt", "desc"), limit(10)),
+            (snap) => setInboxItems(snap.docs.map((d) => ({ id: `inbox-${d.id}`, ...d.data() }))),
+            () => setInboxItems([])
+        );
+        return () => { unsubGlobal(); unsubInbox(); };
+    }, [uid]);
 
     // Clear the list if the user logs out (derived during render, not in effect)
     const [lastUid, setLastUid] = useState(user?.uid || null);
     if ((user?.uid || null) !== lastUid) {
         setLastUid(user?.uid || null);
-        if (!user && items.length > 0) setItems([]);
+        if (!user) { setGlobalItems([]); setInboxItems([]); }
     }
 
     const unreadCount = useMemo(() => {
@@ -174,6 +183,11 @@ export default function NotificationBell() {
                                                     {n.title && (
                                                         <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                                                             {n.title}
+                                                        </p>
+                                                    )}
+                                                    {n.from && (
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-ieee-blue dark:text-cyan-400">
+                                                            From {n.from}
                                                         </p>
                                                     )}
                                                     <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">

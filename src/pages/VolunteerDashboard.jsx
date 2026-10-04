@@ -10,6 +10,7 @@ import { useToast } from "../hooks/useToast";
 import { getGrade, getNextGrade, getGradeProgress, getEarnedBadges, BADGES } from "../utils/grades";
 import { buildReferralLink } from "../utils/referral";
 import ReferralStatsPanel from "../components/ReferralStatsPanel";
+import AmbassadorPanel from "../components/AmbassadorPanel";
 
 export default function VolunteerDashboard() {
     const { user } = useAuth();
@@ -338,6 +339,8 @@ export default function VolunteerDashboard() {
                     </p>
                 </div>
             </div>
+
+            <AmbassadorPanel user={user} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Tasks */}

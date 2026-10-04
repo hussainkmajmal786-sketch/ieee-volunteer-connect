@@ -183,3 +183,54 @@ describe("image uploads (former storage.rules)", () => {
         expect(uploadProblem({ ...ok, size: 5 * 1024 * 1024 })).toMatch(/5MB/);
     });
 });
+
+describe("ambassador program", () => {
+    const ca = () => as("ca1", { role: "VOLUNTEER", ambassadorType: "campus" });
+    it("inbox: users read only their own messages; admins read all; nobody writes directly", async () => {
+        expect(await canRead("inbox", anon)).toBe(false);
+        expect(await canRead("inbox", student())).toEqual([{ field: "userId", value: "alice" }]);
+        expect(await canRead("inbox", admin())).toBe(true);
+        expect(await canWrite("create", "inbox/m1", null, { userId: "alice" }, superAdmin())).toBe(false);
+    });
+    it("applications: campus ambassadors see their recruits, applicants see their own", async () => {
+        expect(await canRead("ambassadorApplications", ca())).toEqual([
+            { field: "campusAmbassadorId", value: "ca1" }, { field: "userId", value: "ca1" }]);
+        expect(await canRead("ambassadorApplications", superAdmin())).toBe(true);
+        expect(await canRead("ambassadorApplications", anon)).toBe(false);
+        expect(await canWrite("create", "ambassadorApplications/alice", null, { status: "APPROVED" }, student())).toBe(false);
+        expect(await canWrite("update", "ambassadorApplications/alice", { status: "PENDING" }, { status: "APPROVED" }, ca())).toBe(false);
+    });
+    it("form settings: public read, super admin write only", async () => {
+        expect(await canRead("settings", anon)).toBe(true);
+        expect(await canWrite("create", "settings/classAmbassadorForm", null, { published: true }, superAdmin())).toBe(true);
+        expect(await canWrite("create", "settings/classAmbassadorForm", null, { published: true }, admin())).toBe(false);
+    });
+    it("users cannot make themselves ambassadors", async () => {
+        const before = { ...newStudent };
+        expect(await canWrite("update", "users/alice", before, { ...before, ambassadorType: "campus" }, student())).toBe(false);
+        expect(await canWrite("update", "users/alice", before, { ...before, campusAmbassadorId: "x" }, student())).toBe(false);
+        expect(await canWrite("create", "users/alice", null, { ...newStudent, ambassadorType: "class" }, as("alice"))).toBe(false);
+        expect(await canWrite("update", "users/alice", before, { ...before, ambassadorType: "campus" }, superAdmin())).toBe(true);
+    });
+});
+
+describe("event link destination (super admin only)", () => {
+    const evt = { name: "Bootcamp", venue: "Hall", participants: 1 };
+    const ext = { linkMode: "external", externalUrl: "https://ieee.cek.ac.in/register" };
+    it("only the super admin can send links to the main website", async () => {
+        expect(await canWrite("update", "events/e1", evt, { ...evt, ...ext }, superAdmin())).toBe(true);
+        expect(await canWrite("update", "events/e1", evt, { ...evt, ...ext }, admin())).toBe(false);
+        expect(await canWrite("create", "events/e1", null, { ...evt, ...ext }, admin())).toBe(false);
+        expect(await canWrite("create", "events/e1", null, { ...evt, ...ext }, superAdmin())).toBe(true);
+    });
+    it("sub-admins can still edit other fields of an external event", async () => {
+        const before = { ...evt, ...ext };
+        expect(await canWrite("update", "events/e1", before, { ...before, desc: "new" }, admin())).toBe(true);
+        expect(await canWrite("create", "events/e2", null, { ...evt, linkMode: "site", externalUrl: "" }, admin())).toBe(true);
+    });
+    it("rejects bad URLs and unknown modes", async () => {
+        expect(await canWrite("update", "events/e1", evt, { ...evt, linkMode: "external", externalUrl: "javascript:alert(1)" }, superAdmin())).toBe(false);
+        expect(await canWrite("update", "events/e1", evt, { ...evt, linkMode: "external" }, superAdmin())).toBe(false);
+        expect(await canWrite("update", "events/e1", evt, { ...evt, linkMode: "weird", externalUrl: "https://x.y" }, superAdmin())).toBe(false);
+    });
+});

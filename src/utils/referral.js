@@ -53,8 +53,12 @@ export function resolveReferral(eventId, urlRef, opts) {
     return getStoredReferral(eventId, opts) || (isValidRefId(urlRef) ? urlRef : null);
 }
 
+/**
+ * An ambassador's personal link. The server records the click and sends the
+ * visitor to this site or the event's main website (chosen per event).
+ */
 export function buildReferralLink(origin, eventId, refId) {
-    return `${origin}/event/${eventId}?ref=${encodeURIComponent(refId)}`;
+    return `${origin}/r/${encodeURIComponent(eventId)}/${encodeURIComponent(refId)}`;
 }
 
 /**
