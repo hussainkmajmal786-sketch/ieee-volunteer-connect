@@ -11,6 +11,7 @@ import { getGrade, getNextGrade, getGradeProgress, getEarnedBadges, BADGES } fro
 import { buildReferralLink } from "../utils/referral";
 import ReferralStatsPanel from "../components/ReferralStatsPanel";
 import AmbassadorPanel from "../components/AmbassadorPanel";
+import SharedFilesPanel from "../components/SharedFilesPanel";
 
 export default function VolunteerDashboard() {
     const { user } = useAuth();
@@ -235,6 +236,8 @@ export default function VolunteerDashboard() {
                         </div>
                     </div>
                 </div>
+                {/* Files shared with everyone / chosen people reach pending accounts too */}
+                <div className="mt-8 text-left"><SharedFilesPanel /></div>
             </div>
         );
     }
@@ -273,6 +276,7 @@ export default function VolunteerDashboard() {
                         </p>
                     </div>
                 </div>
+                <div className="mt-8 text-left"><SharedFilesPanel /></div>
             </div>
         );
     }
@@ -445,6 +449,8 @@ export default function VolunteerDashboard() {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
+                    <SharedFilesPanel />
+
                     {/* Share Links */}
                     <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800">
                         <div className="bg-gradient-to-r from-ieee-blue to-cyan-500 p-5 text-white">

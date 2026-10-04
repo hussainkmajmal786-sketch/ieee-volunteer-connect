@@ -26,3 +26,22 @@ export async function api(path, body) {
     }
     return json;
 }
+
+async function parse(res) {
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(json.error?.code || 'internal', json.error?.message || `Request failed (${res.status})`, res.status);
+    return json;
+}
+
+export async function apiGet(path) {
+    return parse(await fetch(path, { credentials: 'same-origin' }));
+}
+
+export async function apiDelete(path) {
+    return parse(await fetch(path, { method: 'DELETE', credentials: 'same-origin' }));
+}
+
+/** POST multipart form data (file uploads). */
+export async function apiForm(path, formData) {
+    return parse(await fetch(path, { method: 'POST', credentials: 'same-origin', body: formData }));
+}

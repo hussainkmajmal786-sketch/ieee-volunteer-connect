@@ -101,6 +101,7 @@ export async function canRead(collectionPath, ctx) {
             return isSignedIn(ctx);
         }
         if (col === 'linkClicks' || col === 'referralVisits') return isAdmin(ctx);
+        if (col === 'sharedFiles' || col === 'broadcasts') return isSuperAdmin(ctx);
         return false;
     }
     if (s.length === 3 && s[0] === 'events') {

@@ -13,6 +13,7 @@ A volunteer management platform for IEEE student branches — events, tasks, poi
 - **Admin dashboard** — Full CRUD over events, volunteers, tasks, teams, and rewards. Live analytics, link-tracking panel, Ambassador Monitor (per-ambassador funnel with registrant details + CSV), image uploads with cropping, participant analytics, and registration management.
 - **Ambassador program** — Campus Ambassadors (set by the super admin) recruit Class Ambassadors through a personal application form; applications reach the campus ambassador and the super admin, who approves them. The super admin can notify campus ambassadors, class ambassadors, both, or chosen people.
 - **Tracked short links** — ambassador links (`/r/<event>/<ambassador>`) are counted server-side and lead either to this site's registration or to the event's main-website page (super admin's choice per event).
+- **Communication Center (super admin)** — share files (PDF, images, any document up to 25 MB) or links with campus/class ambassadors, volunteers, everyone, or chosen people (private downloads + bell notification); message every registered participant (all events or one) by email (Brevo), SMS (Fast2SMS) or WhatsApp (Cloud API), with de-duplication, progress and a send log.
 - **Leaderboard** — Public rankings by points with grade tiers and badge display.
 - **Auth** — Email/password, Google sign-in, password reset (Better Auth). Role-based access (`STUDENT` → `VOLUNTEER` → `ADMIN` → `SUPER_ADMIN`).
 - **PWA** — Installable, offline page, service worker.
@@ -79,7 +80,7 @@ npx wrangler secret put BETTER_AUTH_SECRET     # any long random string
 npm run deploy
 ```
 
-Optional secrets: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (Google sign-in; redirect URI `https://<your-site>/api/auth/callback/google`), `FIREBASE_API_KEY` (lets migrated users sign in with their old password), `RESEND_API_KEY` (password-reset emails). Set `BETTER_AUTH_URL` to your site URL under `vars` in `wrangler.jsonc` once it is known.
+Optional secrets: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (Google sign-in; redirect URI `https://<your-site>/api/auth/callback/google`), `FIREBASE_API_KEY` (lets migrated users sign in with their old password), `BREVO_API_KEY` + `BREVO_SENDER_EMAIL` (emails, incl. password reset), `FAST2SMS_API_KEY` (SMS), `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` (WhatsApp; approved template `ieee_update` with body `Hi {{1}}, {{2}}`). Set `BETTER_AUTH_URL` to your site URL under `vars` in `wrangler.jsonc` once it is known.
 
 GitHub Actions (`.github/workflows/deploy.yml`) lints, tests and builds every PR, and deploys `main` when the `CLOUDFLARE_API_TOKEN` repo secret is set.
 
@@ -124,6 +125,8 @@ tests/                  # vitest suites
 - **inbox** — each user reads only their own messages · written by the server
 - **ambassadorApplications** — campus ambassadors read their own recruits, applicants their own · approvals by the super admin only
 - **Event link destination, ambassador roles, form settings** — super admin only
+- **Shared files** — metadata super-admin only; downloads checked per audience, never served from the public `/files/` path; HTML/SVG always downloaded, not rendered
+- **Participant messaging** — super admin only, max 40 recipients per request, every send logged in `broadcasts`
 - **Uploads** — admins only, JPEG/PNG/WebP/GIF under 5 MB, fixed folders
 - **Default** — deny
 
