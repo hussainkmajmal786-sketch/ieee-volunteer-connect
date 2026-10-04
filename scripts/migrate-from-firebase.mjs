@@ -6,10 +6,10 @@
  *
  * Options:
  *   --key <file>      Firebase service-account JSON (default: service-account.json)
- *   --bucket <name>   Storage bucket (default: tries <project>.firebasestorage.app, then <project>.appspot.com)
  *   --local           Load into the local dev database instead of Cloudflare
  *   --export-only     Only write migration/ files, don't touch Cloudflare
- *   --skip-files      Don't copy Storage images
+ *   --skip-files      Don't copy Storage files
+ *   --files-only      Only copy Storage files to Cloudflare (data already imported)
  *
  * What happens to accounts:
  *   - Email/password users keep their password: it's checked once against
@@ -64,23 +64,20 @@ const auth = getAuth();
 
 // ─── Value conversion ───────────────────────────────────────
 
-let bucketName = null;
-const referencedFiles = new Set();
+const referencedFiles = new Map();   // key (object path) → bucket name
 
-function storagePathFromUrl(url) {
-    if (!bucketName) return null;
-    const esc = bucketName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    let m = url.match(new RegExp(`^https?://[^/]+/v0/b/${esc}/o/([^?#]+)`));
-    if (m) return decodeURIComponent(m[1]);
-    m = url.match(new RegExp(`^https://storage\\.googleapis\\.com/${esc}/([^?#]+)`));
-    return m ? decodeURIComponent(m[1]) : null;
+function storageRefFromUrl(url) {
+    let m = url.match(/^https?:\/\/[^/]+\/v0\/b\/([^/]+)\/o\/([^?#]+)/);
+    if (m) return { bucket: m[1], path: decodeURIComponent(m[2]) };
+    m = url.match(/^https:\/\/storage\.googleapis\.com\/([^/]+)\/([^?#]+)/);
+    return m ? { bucket: m[1], path: decodeURIComponent(m[2]) } : null;
 }
 
 function convert(value) {
     if (value === null || value === undefined) return value ?? null;
     if (typeof value === 'string') {
-        const path = storagePathFromUrl(value);
-        if (path) { referencedFiles.add(path); return `/files/${path}`; }
+        const ref = storageRefFromUrl(value);
+        if (ref) { referencedFiles.set(ref.path, ref.bucket); return `/files/${ref.path}`; }
         return value;
     }
     if (typeof value !== 'object') return Number.isNaN(value) ? null : value;
@@ -134,27 +131,30 @@ async function exportUsers() {
     return users;
 }
 
+/** Download every Storage object the data links to (each file on its own, so one failure doesn't stop the rest). */
 async function exportFiles() {
-    const candidates = opt('bucket') ? [opt('bucket')] : [`${projectId}.firebasestorage.app`, `${projectId}.appspot.com`];
-    for (const name of candidates) {
-        const bucket = getStorage().bucket(name);
-        try {
-            // getFiles() throws for a bucket that doesn't exist.
-            const [files] = await bucket.getFiles();
-            bucketName = name;
-            const out = [];
-            for (const f of files) {
-                if (f.name.endsWith('/')) continue;
-                const [buf] = await f.download();
-                out.push({ key: f.name, contentType: f.metadata?.contentType || 'application/octet-stream', buf });
+    const out = [];
+    const failed = [];
+    for (const [key, bucket] of referencedFiles) {
+        const file = getStorage().bucket(bucket).file(key);
+        let lastErr;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const [[buf], [meta]] = await Promise.all([file.download(), file.getMetadata()]);
+                out.push({ key, contentType: meta?.contentType || 'application/octet-stream', buf });
+                lastErr = null;
+                break;
+            } catch (err) {
+                lastErr = err;
             }
-            return out;
-        } catch (err) {
-            log(`  – bucket ${name}: ${err.message.split('\n')[0]}`);
         }
+        if (lastErr) failed.push({ key, bucket, message: String(lastErr.message || lastErr).split('\n')[0] });
     }
-    log('  – no Storage bucket found; images keep their old URLs');
-    return [];
+    if (failed.length) {
+        log(`  ! ${failed.length} file(s) could not be downloaded:`);
+        for (const f of failed.slice(0, 10)) log(`      ${f.bucket}/${f.key} — ${f.message}`);
+    }
+    return out;
 }
 
 // ─── SQL generation ─────────────────────────────────────────
@@ -219,9 +219,17 @@ function writeKvChunks(files) {
     });
 }
 
+// On Windows npx is a .cmd, so it must run through the shell; quote each
+// argument ourselves (paths can contain spaces, e.g. C:\Users\First Last).
+function runWrangler(args) {
+    if (process.platform !== 'win32') return spawnSync('npx', ['wrangler', ...args], { stdio: 'inherit' });
+    const quoted = args.map(a => (/[\s"&|<>^]/.test(a) ? `"${a.replace(/"/g, '""')}"` : a)).join(' ');
+    return spawnSync(`npx wrangler ${quoted}`, { stdio: 'inherit', shell: true });
+}
+
 function wrangler(...cmd) {
     log(`  $ wrangler ${cmd.join(' ')}`);
-    const res = spawnSync('npx', ['wrangler', ...cmd], { stdio: 'inherit', shell: process.platform === 'win32' });
+    const res = runWrangler(cmd);
     if (res.status !== 0) die(`wrangler ${cmd[0]} ${cmd[1]} failed — fix the error above and re-run (the import is safe to repeat).`);
 }
 
@@ -230,28 +238,33 @@ function wrangler(...cmd) {
 log(`\nMigrating Firebase project "${projectId}" → Cloudflare (${TARGET.slice(2)})\n`);
 mkdirSync(join(OUT, 'files'), { recursive: true });
 
-log('1/4 Storage files');
+log('1/4 Firestore');
+await exportFirestore();
+
+log('2/4 Storage files');
 const files = flag('skip-files') ? [] : await exportFiles();
 for (const f of files) {
     const p = join(OUT, 'files', f.key);
     mkdirSync(dirname(p), { recursive: true });
     writeFileSync(p, f.buf);
 }
-log(`  ✓ ${files.length} files`);
+log(`  ✓ ${files.length} of ${referencedFiles.size} linked files downloaded`);
+const kvFiles = writeKvChunks(files);
 
-log('2/4 Firestore');
-await exportFirestore();
+if (flag('files-only')) {
+    if (flag('export-only')) process.exit(0);
+    log('3/3 Uploading files to Cloudflare');
+    for (const f of kvFiles) wrangler('kv', 'bulk', 'put', f, '--binding=FILES_KV', TARGET);
+    log(`\n✔ Done. ${files.length} files uploaded.`);
+    process.exit(0);
+}
 
 log('3/4 Auth users');
 const users = await exportUsers();
 const { sql, imported, skippedNoEmail, skippedDisabled, skippedLarge } = buildSql(users);
 writeFileSync(join(OUT, 'data.sql'), sql);
 log(`  ✓ ${imported} accounts (${skippedNoEmail} without email and ${skippedDisabled} disabled were skipped)`);
-const missing = [...referencedFiles].filter(k => !files.some(f => f.key === k));
-if (missing.length && files.length) log(`  ! ${missing.length} image URLs point to files that no longer exist`);
-
-const kvFiles = writeKvChunks(files);
-log(`  ✓ wrote ${OUT}/data.sql (${docs.length} documents${skippedLarge ? `, ${skippedLarge} too large` : ''}) and ${kvFiles.length} image bundle(s)`);
+log(`  ✓ wrote ${OUT}/data.sql (${docs.length} documents${skippedLarge ? `, ${skippedLarge} too large` : ''}) and ${kvFiles.length} file bundle(s)`);
 
 if (flag('export-only')) {
     log('\nExport only — nothing was sent to Cloudflare.');
@@ -263,5 +276,5 @@ wrangler('d1', 'migrations', 'apply', 'DB', TARGET);
 wrangler('d1', 'execute', 'DB', TARGET, '--yes', `--file=${join(OUT, 'data.sql')}`);
 for (const f of kvFiles) wrangler('kv', 'bulk', 'put', f, '--binding=FILES_KV', TARGET);
 
-log(`\n✔ Done. ${docs.length} documents, ${imported} accounts and ${files.length} images migrated.`);
+log(`\n✔ Done. ${docs.length} documents, ${imported} accounts and ${files.length} files migrated.`);
 log('  Delete the migration/ folder and service-account.json when you have checked the site.');
