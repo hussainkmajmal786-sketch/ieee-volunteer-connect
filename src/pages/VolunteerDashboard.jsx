@@ -8,6 +8,8 @@ import { doc, updateDoc, collection, query, onSnapshot, arrayUnion, increment } 
 import Button from "../components/Button";
 import { useToast } from "../hooks/useToast";
 import { getGrade, getNextGrade, getGradeProgress, getEarnedBadges, BADGES } from "../utils/grades";
+import { buildReferralLink } from "../utils/referral";
+import ReferralStatsPanel from "../components/ReferralStatsPanel";
 
 export default function VolunteerDashboard() {
     const { user } = useAuth();
@@ -145,7 +147,7 @@ export default function VolunteerDashboard() {
 
     const copyLink = async (eventId, eventName) => {
         // Generate a personal referral link with the volunteer's UID
-        const url = `${window.location.origin}/event/${eventId}?ref=${user.uid}`;
+        const url = buildReferralLink(window.location.origin, eventId, user.uid);
         try {
             await navigator.clipboard.writeText(url);
         } catch {
@@ -434,6 +436,8 @@ export default function VolunteerDashboard() {
                             })}
                         </div>
                     )}
+
+                    <ReferralStatsPanel user={user} events={events} />
                 </div>
 
                 {/* Sidebar */}

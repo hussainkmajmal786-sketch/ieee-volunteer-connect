@@ -581,3 +581,22 @@ describe("notifications — admin notify flow", () => {
         );
     });
 });
+
+describe("referralVisits", () => {
+    it("BLOCKS client writes (server-maintained unique-visitor markers)", async () => {
+        await seedUser("alice", { name: "Alice", role: "VOLUNTEER", approvalStatus: "ACTIVE", points: 0 });
+        await assertFails(setDoc(doc(anonCtx(), "referralVisits", "v1"), { eventId: "e1", refId: "alice" }));
+        await assertFails(setDoc(doc(studentCtx("alice"), "referralVisits", "v1"), { eventId: "e1", refId: "alice" }));
+    });
+
+    it("ALLOWS admins to read and BLOCKS volunteers", async () => {
+        const { getDoc } = await import("firebase/firestore");
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            await setDoc(doc(ctx.firestore(), "referralVisits", "v1"), { eventId: "e1", refId: "alice" });
+        });
+        await seedUser("admin1", { name: "Admin", role: "ADMIN", approvalStatus: "ACTIVE", points: 0 });
+        await seedUser("alice", { name: "Alice", role: "VOLUNTEER", approvalStatus: "ACTIVE", points: 0 });
+        await assertSucceeds(getDoc(doc(adminCtx("admin1"), "referralVisits", "v1")));
+        await assertFails(getDoc(doc(studentCtx("alice"), "referralVisits", "v1")));
+    });
+});

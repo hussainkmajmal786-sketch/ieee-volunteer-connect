@@ -160,6 +160,13 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ─── AMBASSADOR UNIQUE-VISITOR MARKERS ───────────────────
+    // Written only by the recordLinkClick Cloud Function (Admin SDK).
+    match /referralVisits/{visitId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // ─── OPPORTUNITIES COLLECTION ───────────────────────────
     match /opportunities/{oppId} {
       allow read: if true;

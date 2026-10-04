@@ -1,6 +1,6 @@
-import { useParams, useLocation } from "react-router-dom";
-import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import Card from "../components/Card";
@@ -12,6 +12,7 @@ import { doc, collection, query, onSnapshot, orderBy, limit } from "firebase/fir
 import { httpsCallable } from "firebase/functions";
 import MetaTags from "../shared/MetaTags";
 import { trackingService } from "../services/trackingService";
+import { rememberReferral, resolveReferral, buildReferralLink } from "../utils/referral";
 
 // Countdown Timer Component
 function CountdownTimer({ targetDate }) {
@@ -90,7 +91,13 @@ function CountdownTimer({ targetDate }) {
 export default function EventDetailPage() {
     const { id } = useParams();
     const location = useLocation();
-    const referredBy = new URLSearchParams(location.search).get('ref') || null;
+    const navigate = useNavigate();
+    const urlRef = new URLSearchParams(location.search).get('ref') || null;
+    // Persist the ambassador before any sign-in round-trip can drop ?ref=.
+    const referredBy = useMemo(() => {
+        rememberReferral(id, urlRef);
+        return resolveReferral(id, urlRef);
+    }, [id, urlRef]);
     const addToast = useToast();
     const { user } = useAuth();
     const [event, setEvent] = useState(null);
@@ -106,10 +113,33 @@ export default function EventDetailPage() {
     // Track page view + referral visit on mount
     useEffect(() => {
         trackingService.track('page_view', { eventId: id });
-        if (referredBy) {
-            trackingService.track('referral_visit', { eventId: id, refId: referredBy });
+        // Only an actual open of an ambassador link counts as a referral visit.
+        if (urlRef) {
+            trackingService.track('referral_visit', { eventId: id, refId: urlRef });
         }
-    }, [id, referredBy]);
+    }, [id, urlRef]);
+
+    // Prefill the form from the signed-in account
+    useEffect(() => {
+        if (!user) return;
+        setForm(f => ({
+            ...f,
+            name: f.name || user.name || user.displayName || '',
+            email: f.email || user.email || '',
+            college: f.college || user.college || '',
+        }));
+    }, [user]);
+
+    // Signed-in users share their own referral link, so anyone can promote
+    // the event and get credited; visitors pass on the link they arrived with.
+    const shareUrl = user?.uid
+        ? buildReferralLink(window.location.origin, id, user.uid)
+        : window.location.href;
+
+    const goToSignIn = () => {
+        trackingService.track('register_click', { element: 'sign_in_to_register', eventId: id, eventName: event?.name, refId: referredBy });
+        navigate('/auth', { state: { from: location } });
+    };
 
     // Fetch event data from Firestore (real-time for countdown/notification updates)
     useEffect(() => {
@@ -148,13 +178,13 @@ export default function EventDetailPage() {
     const handleCopyLink = async () => {
         trackingService.track('share_click', { element: 'copy_link', eventId: id, eventName: event?.name });
         try {
-            await navigator.clipboard.writeText(window.location.href);
+            await navigator.clipboard.writeText(shareUrl);
             setCopied(true);
             addToast('Event link copied to clipboard!', 'success');
             setTimeout(() => setCopied(false), 2000);
         } catch {
             const textarea = document.createElement('textarea');
-            textarea.value = window.location.href;
+            textarea.value = shareUrl;
             document.body.appendChild(textarea);
             textarea.select();
             document.execCommand('copy');
@@ -167,14 +197,14 @@ export default function EventDetailPage() {
 
     const handleShareWhatsApp = () => {
         trackingService.track('share_click', { element: 'whatsapp', eventId: id, eventName: event?.name });
-        const text = `Check out this IEEE event: ${event?.name} — ${window.location.href}`;
+        const text = `Check out this IEEE event: ${event?.name} — ${shareUrl}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
     const handleShareTwitter = () => {
         trackingService.track('share_click', { element: 'twitter', eventId: id, eventName: event?.name });
         const text = `I'm attending "${event?.name}" by IEEE! Join me 🚀`;
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`, '_blank');
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
     };
 
     const handleRegister = async (e) => {
@@ -183,7 +213,7 @@ export default function EventDetailPage() {
         setSubmitting(true);
         try {
             if (!user) {
-                addToast('Please sign in before registering for this event.', 'warning');
+                goToSignIn();
                 return;
             }
 
@@ -371,10 +401,22 @@ export default function EventDetailPage() {
                                         </div>
                                         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">You&apos;re Registered!</h3>
                                         <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">We look forward to seeing you at <span className="font-semibold text-gray-700 dark:text-gray-300">{event.name}</span>.</p>
-                                        <p className="text-xs text-gray-400">Share this event with your friends!</p>
+                                        <p className="text-xs text-gray-400">Share your personal link — registrations through it count toward your rewards!</p>
                                         <button onClick={handleCopyLink} className="mt-4 flex items-center justify-center gap-2 mx-auto px-6 py-2 rounded-xl text-sm font-semibold bg-ieee-blue/10 text-ieee-blue hover:bg-ieee-blue hover:text-white transition">
-                                            <Copy className="w-4 h-4" /> Copy Event Link
+                                            <Copy className="w-4 h-4" /> Copy My Referral Link
                                         </button>
+                                    </motion.div>
+                                ) : !user ? (
+                                    <motion.div key="signin" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 text-center space-y-4">
+                                        <div className="w-14 h-14 mx-auto bg-ieee-blue/10 rounded-full flex items-center justify-center">
+                                            <LogIn className="w-7 h-7 text-ieee-blue" />
+                                        </div>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                                            Sign in or create a free account to register. You&apos;ll come straight back to this event.
+                                        </p>
+                                        <Button onClick={goToSignIn} className="w-full py-3 text-base shadow-lg hover:shadow-xl">
+                                            Sign in to Register
+                                        </Button>
                                     </motion.div>
                                 ) : (
                                     <motion.form key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleRegister} className="p-5 space-y-4">

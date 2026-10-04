@@ -71,16 +71,27 @@ exports.registerForEvent = onCall(async (request) => {
     registeredAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  const referredBy = safeFieldKey(request.data?.referredBy);
-  if (referredBy) registration.referredBy = referredBy;
+  // Self-referrals never count toward an ambassador's target.
+  const requestedRef = safeFieldKey(request.data?.referredBy);
+  const candidateRef = requestedRef && requestedRef !== request.auth.uid ? requestedRef : null;
 
   const eventRef = db.collection("events").doc(eventId);
   const regRef = eventRef.collection("registrations").doc(request.auth.uid);
+  const referrerRef = candidateRef ? db.collection("users").doc(candidateRef) : null;
 
   await db.runTransaction(async (tx) => {
     const eventSnap = await tx.get(eventRef);
     if (!eventSnap.exists) {
       throw new HttpsError("not-found", "Event not found");
+    }
+
+    // Only credit referrers that are real accounts, so forged ?ref= values
+    // cannot pollute refCounts.
+    const referrerSnap = referrerRef ? await tx.get(referrerRef) : null;
+    const referredBy = referrerSnap?.exists ? candidateRef : null;
+    if (referredBy) {
+      registration.referredBy = referredBy;
+      registration.referrerName = optionalString(referrerSnap.get("name"), 100);
     }
 
     const existingUserReg = await tx.get(regRef);
@@ -129,13 +140,26 @@ exports.recordLinkClick = onCall(async (request) => {
     eventName: optionalString(request.data?.eventName, 200),
     refId: optionalString(request.data?.refId, 128),
     sessionId: optionalString(request.data?.sessionId, 128),
+    visitorId: optionalString(request.data?.visitorId, 128),
     device: optionalString(request.data?.device, 40),
     userId: uid,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
   };
 
+  // Ambassador link visits also feed per-event counters so ambassadors (who
+  // cannot read linkClicks) can see their own funnel on the event document.
+  const refKey = safeFieldKey(payload.refId);
+  const countsReferral = eventType === "referral_visit" && refKey && payload.eventId && refKey !== uid;
+  const eventRef = countsReferral ? db.collection("events").doc(payload.eventId) : null;
+  const visitorKey = uid ? `uid_${uid}` : payload.visitorId || payload.sessionId || subject;
+  const visitRef = countsReferral
+    ? db.collection("referralVisits").doc(hashSubject(`${payload.eventId}|${refKey}|${visitorKey}`))
+    : null;
+
   await db.runTransaction(async (tx) => {
     const rateSnap = await tx.get(rateRef);
+    const eventSnap = eventRef ? await tx.get(eventRef) : null;
+    const visitSnap = eventSnap?.exists ? await tx.get(visitRef) : null;
     const rate = rateSnap.exists ? rateSnap.data() : {};
     const windowStart = rate.windowStartMs || 0;
     const count = rate.count || 0;
@@ -151,6 +175,20 @@ exports.recordLinkClick = onCall(async (request) => {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     tx.set(db.collection("linkClicks").doc(), payload);
+
+    if (eventSnap?.exists) {
+      const counters = { [`refClicks.${refKey}`]: admin.firestore.FieldValue.increment(1) };
+      if (!visitSnap.exists) {
+        counters[`refVisitors.${refKey}`] = admin.firestore.FieldValue.increment(1);
+        tx.set(visitRef, {
+          eventId: payload.eventId,
+          refId: refKey,
+          userId: uid,
+          firstSeen: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+      tx.update(eventRef, counters);
+    }
   });
 
   return { ok: true };

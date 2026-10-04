@@ -18,6 +18,21 @@ function getOrCreateSession() {
     return sid;
 }
 
+// Survives across tabs and visits so an ambassador's unique-visitor count
+// isn't inflated by the same person reopening the link.
+function getOrCreateVisitorId() {
+    try {
+        let vid = localStorage.getItem('_vc_vid');
+        if (!vid) {
+            vid = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+            localStorage.setItem('_vc_vid', vid);
+        }
+        return vid;
+    } catch {
+        return null;
+    }
+}
+
 function deriveSource(referrer, utmSource) {
     if (utmSource) return utmSource;
     if (!referrer) return 'direct';
@@ -63,6 +78,7 @@ export const trackingService = {
                 eventName: data.eventName || null,
                 refId: params.get('ref') || data.refId || null,
                 sessionId: getOrCreateSession(),
+                visitorId: getOrCreateVisitorId(),
                 device: getDeviceType(),
             });
         } catch { /* tracking must never break the app */ }

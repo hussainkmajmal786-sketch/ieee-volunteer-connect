@@ -26,6 +26,7 @@ import TaskList from '../components/admin/TaskList';
 import TeamList from '../components/admin/TeamList';
 import RewardList from '../components/admin/RewardList';
 import LinkTrackingPanel from '../components/admin/LinkTrackingPanel';
+import AmbassadorMonitor from '../components/admin/AmbassadorMonitor';
 import ContentManager from '../components/admin/ContentManager';
 
 // Modals
@@ -260,7 +261,13 @@ export default function AdminDashboard() {
         setShowRegistrationsModal(true);
         try {
             const regsSnap = await getDocs(collection(db, "events", eventId, "registrations"));
-            const regsData = regsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const regsData = regsSnap.docs.map(d => {
+                const data = d.data();
+                const referrer = data.referredBy
+                    ? (volunteers.find(v => v.id === data.referredBy || v.uid === data.referredBy)?.name || data.referrerName || 'Unknown ambassador')
+                    : '';
+                return { id: d.id, ...data, referrer };
+            });
             regsData.sort((a, b) => (b.registeredAt?.toDate?.() || new Date(b.registeredAt)) - (a.registeredAt?.toDate?.() || new Date(a.registeredAt)));
             setRegistrations(regsData);
         } catch (error) {
@@ -273,8 +280,8 @@ export default function AdminDashboard() {
 
     const exportRegistrations = () => {
         if (registrations.length === 0) return;
-        const headers = ['Name', 'Email', 'Phone', 'College', 'Year', 'Registered At'];
-        const csvRows = [headers.join(','), ...registrations.map(r => [`"${r.name || ''}"`, `"${r.email || ''}"`, `"${r.phone || ''}"`, `"${r.college || ''}"`, `"${r.year || ''}"`, `"${r.registeredAt?.toDate ? r.registeredAt.toDate().toLocaleString() : new Date(r.registeredAt).toLocaleString()}"`].join(','))];
+        const headers = ['Name', 'Email', 'Phone', 'College', 'Year', 'Referred By', 'Registered At'];
+        const csvRows = [headers.join(','), ...registrations.map(r => [`"${r.name || ''}"`, `"${r.email || ''}"`, `"${r.phone || ''}"`, `"${r.college || ''}"`, `"${r.year || ''}"`, `"${r.referrer || ''}"`, `"${r.registeredAt?.toDate ? r.registeredAt.toDate().toLocaleString() : new Date(r.registeredAt).toLocaleString()}"`].join(','))];
         const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -693,6 +700,9 @@ export default function AdminDashboard() {
                 <div className="mt-8 bg-gray-50 dark:bg-gray-800/30 rounded-3xl border border-gray-100 dark:border-gray-700 p-6 md:p-8">
                     <LinkTrackingPanel volunteers={scopedVolunteers} events={events} />
                 </div>
+
+                {/* ── Ambassador referral funnel ── */}
+                <AmbassadorMonitor events={events} volunteers={volunteers} />
 
                 {/* ── Super Admin Content Manager ── */}
                 {isSuperAdmin && <ContentManager />}

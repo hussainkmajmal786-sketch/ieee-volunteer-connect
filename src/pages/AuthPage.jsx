@@ -48,7 +48,9 @@ export default function AuthPage() {
     // If already logged in, redirect
     useEffect(() => {
         if (user) {
-            const redirectPath = location.state?.from?.pathname || "/dashboard";
+            // Keep the query string so referral links (?ref=) survive sign-in.
+            const from = location.state?.from;
+            const redirectPath = from?.pathname ? `${from.pathname}${from.search || ""}${from.hash || ""}` : "/dashboard";
             navigate(redirectPath, { replace: true });
         }
     }, [user, navigate, location]);
