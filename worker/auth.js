@@ -84,7 +84,10 @@ export function createAuth(env) {
         },
         socialProviders,
         account: {
-            accountLinking: { enabled: true, trustedProviders: ['google'] },
+            // Google proves the person owns the email, so it may sign in to an
+            // existing account even if that account's email was never verified
+            // (e.g. migrated Firebase users). See account.create.after below.
+            accountLinking: { enabled: true, trustedProviders: ['google'], requireLocalEmailVerified: false },
         },
         session: {
             cookieCache: { enabled: true, maxAge: 5 * 60 },
@@ -95,6 +98,23 @@ export function createAuth(env) {
                     // Every new account gets its app profile (role, points…).
                     after: async (user) => {
                         await writeDoc(env.DB, `users/${user.id}`, (before) => before ?? defaultProfile(user));
+                    },
+                },
+            },
+            account: {
+                create: {
+                    // Linking Google to an account whose email was never verified:
+                    // the existing password may have been set by someone who doesn't
+                    // own the address, so drop it and end its sessions. The owner
+                    // keeps Google sign-in and can set a password with "Forgot password".
+                    after: async (account) => {
+                        if (account.providerId === 'credential') return;
+                        const row = await env.DB.prepare('SELECT emailVerified FROM "user" WHERE id = ?').bind(account.userId).first();
+                        if (!row || row.emailVerified) return;
+                        await env.DB.batch([
+                            env.DB.prepare(`DELETE FROM account WHERE userId = ? AND providerId = 'credential'`).bind(account.userId),
+                            env.DB.prepare('DELETE FROM session WHERE userId = ?').bind(account.userId),
+                        ]);
                     },
                 },
             },
