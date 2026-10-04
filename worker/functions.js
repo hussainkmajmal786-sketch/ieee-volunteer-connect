@@ -38,7 +38,7 @@ export async function sha256Hex(value) {
 }
 
 /** Fixed-window limiter; throws resource-exhausted when over the limit. */
-async function rateLimit(db, subject, limit, windowMs) {
+export async function rateLimit(db, subject, limit, windowMs) {
     const now = Date.now();
     const row = await db.prepare(`
         INSERT INTO rate_limits (subject, window_start, count) VALUES (?1, ?2, 1)

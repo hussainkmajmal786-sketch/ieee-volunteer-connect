@@ -17,6 +17,7 @@ import { createShare, listShares, downloadShare, deleteShare } from './sharedFil
 import { listParticipants, sendBatch } from './messaging.js';
 import { listPeople, getPerson, leaderboard, eventParticipants, uploadAvatar } from './people.js';
 import { putFile, getFile } from './files.js';
+import { getHook, updateHook, importRegistrations, receiveWebhook } from './externalRegistrations.js';
 
 const STATUS = {
     'invalid-argument': 400, unauthenticated: 401, 'permission-denied': 403, 'not-found': 404,
@@ -198,6 +199,28 @@ app.delete('/api/shared-files/:id', async (c) => c.json(await deleteShare(c.env,
 
 app.get('/api/admin/participants', async (c) => c.json(await listParticipants(c.env, c.get('ctx'), c.req.query('eventId') || null)));
 app.post('/api/admin/broadcast', async (c) => c.json(await sendBatch(c.env, c.get('ctx'), await c.req.json())));
+
+// ─── Registrations on the main website ───────────────────────
+
+const originOf = (c) => new URL(c.req.url).origin;
+app.get('/api/admin/events/:id/hook', async (c) => c.json(await getHook(c.env, c.get('ctx'), c.req.param('id'), originOf(c))));
+app.post('/api/admin/events/:id/hook', async (c) => c.json(await updateHook(c.env, c.get('ctx'), c.req.param('id'), await c.req.json(), originOf(c))));
+app.post('/api/admin/events/:id/import', async (c) => c.json(await importRegistrations(c.env, c.get('ctx'), c.req.param('id'), await c.req.json())));
+
+// Called by the main website (Google Forms Apps Script, or its own server)
+// for each submitted registration form. Authenticated by the per-event key.
+const HOOK_CORS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Webhook-Key',
+};
+app.options('/api/hooks/registrations/:eventId', () => new Response(null, { status: 204, headers: HOOK_CORS }));
+app.post('/api/hooks/registrations/:eventId', async (c) => {
+    for (const [k, v] of Object.entries(HOOK_CORS)) c.header(k, v);
+    const body = await c.req.json().catch(() => { throw new DocError('invalid-argument', 'Body must be JSON'); });
+    const key = c.req.header('X-Webhook-Key') || c.req.query('key') || '';
+    return c.json(await receiveWebhook(c.env, c.req.param('eventId'), key, body));
+});
 
 app.post('/api/upload', async (c) => {
     const ctx = c.get('ctx');

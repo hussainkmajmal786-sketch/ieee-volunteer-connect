@@ -2,6 +2,7 @@
 // application form, admin notifications, and tracked short links (/r/...).
 import { DocError, getDocRow, writeDoc, autoId, applyUpdate } from './docstore.js';
 import { isSuperAdmin, isValidExternalUrl } from './rules.js';
+import { hookConfig } from './externalRegistrations.js';
 import {
     requireString, optionalString, validateEmail, safeFieldKey,
     limitClicks, creditReferralVisit,
@@ -172,8 +173,17 @@ function readCookie(header, name) {
     return m ? decodeURIComponent(m[1]) : null;
 }
 
-function withTracking(url, eventId) {
+/**
+ * The main-website URL with UTM tags and the ambassador's code: always as
+ * ?ref=, and also under the field the super admin configured (for example a
+ * Google Form pre-fill "entry.123456789") so the form records who referred.
+ */
+export function withTracking(url, eventId, refId, refParam) {
     const u = new URL(url);
+    if (refId) {
+        u.searchParams.set('ref', refId);
+        if (refParam && refParam !== 'ref') u.searchParams.set(refParam, refId);
+    }
     if (!u.searchParams.has('utm_source')) u.searchParams.set('utm_source', 'ieee-volunteer-connect');
     if (!u.searchParams.has('utm_medium')) u.searchParams.set('utm_medium', 'ambassador');
     if (!u.searchParams.has('utm_campaign')) u.searchParams.set('utm_campaign', eventId);
@@ -199,7 +209,8 @@ export async function shortLink(env, request, eventId, refId, auth) {
         return Response.redirect(`${origin}/event/${eventKey}?ref=${encodeURIComponent(refKey)}`, 302);
     }
 
-    const headers = new Headers({ Location: withTracking(event.externalUrl, eventKey), 'Cache-Control': 'no-store' });
+    const refParam = (await hookConfig(db, eventKey))?.refParam;
+    const headers = new Headers({ Location: withTracking(event.externalUrl, eventKey, refKey, refParam), 'Cache-Control': 'no-store' });
     const ua = request.headers.get('User-Agent') || '';
     if (!BOT_UA.test(ua)) {
         let visitorId = readCookie(request.headers.get('Cookie'), '_vc_vid');

@@ -709,7 +709,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* ── Ambassador referral funnel ── */}
-                <AmbassadorMonitor events={events} volunteers={volunteers} />
+                <AmbassadorMonitor events={events} volunteers={volunteers} isSuperAdmin={isSuperAdmin} />
 
                 {/* ── Campus / Class ambassadors (super admin) ── */}
                 {isSuperAdmin && <AmbassadorProgram users={volunteers} />}

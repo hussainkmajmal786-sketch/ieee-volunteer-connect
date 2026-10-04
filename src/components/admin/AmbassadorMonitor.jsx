@@ -1,17 +1,25 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Megaphone, ChevronDown, Download, MousePointerClick, Eye, UserCheck, TrendingUp } from "lucide-react";
+import { Megaphone, ChevronDown, Download, FileText, MousePointerClick, Eye, UserCheck, TrendingUp, Loader2 } from "lucide-react";
 import { collection, getDocs } from "../../lib/firestore";
 import { db } from "../../lib/backend";
 import { ambassadorRows } from "../../utils/referral";
+import { exportRegistrationsCsv, exportRegistrationsPdf, formatDate, sourceLabel } from "../../utils/registrationExport";
+import { useToast } from "../../hooks/useToast";
+import MainSiteSync from "./MainSiteSync";
 
-function formatDate(ts) {
-    const d = ts?.toDate ? ts.toDate() : ts ? new Date(ts) : null;
-    return d && !Number.isNaN(d.getTime()) ? d.toLocaleString() : '';
-}
+const PREVIEW = 20;
 
-function csvCell(value) {
-    return `"${String(value ?? '').replace(/"/g, '""')}"`;
+function Answers({ answers }) {
+    const entries = Object.entries(answers || {});
+    if (entries.length === 0) return null;
+    return (
+        <dl className="mt-1 grid sm:grid-cols-2 gap-x-4 gap-y-0.5 text-[11px]">
+            {entries.map(([q, a]) => (
+                <div key={q} className="min-w-0"><dt className="inline text-gray-400">{q}: </dt><dd className="inline text-gray-700 dark:text-gray-300 break-words">{a}</dd></div>
+            ))}
+        </dl>
+    );
 }
 
 /**
@@ -19,7 +27,8 @@ function csvCell(value) {
  * clicks → unique visitors → registrations, with the full list of who
  * registered through each link.
  */
-export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
+export default function AmbassadorMonitor({ events = [], volunteers = [], isSuperAdmin = false }) {
+    const addToast = useToast();
     const eventsWithActivity = useMemo(
         () => events.filter(e => ambassadorRows(e).length > 0),
         [events]
@@ -31,6 +40,10 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
     const [registrations, setRegistrations] = useState({ eventId: null, list: [] });
     const [openRef, setOpenRef] = useState(null);
     const [typeFilter, setTypeFilter] = useState('all');
+    const [reload, setReload] = useState(0);
+    const [openReg, setOpenReg] = useState(null);
+    const [showAll, setShowAll] = useState(false);
+    const [pdfBusy, setPdfBusy] = useState(false);
     const loading = registrations.eventId !== eventId;
 
     useEffect(() => {
@@ -48,7 +61,7 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
                 if (!cancelled) setRegistrations({ eventId, list: [] });
             });
         return () => { cancelled = true; };
-    }, [eventId]);
+    }, [eventId, reload]);
 
     const nameOf = (uid, fallback) =>
         volunteers.find(v => v.id === uid || v.uid === uid)?.name || fallback || 'Unknown ambassador';
@@ -76,18 +89,25 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
     }), { clicks: 0, visitors: 0, registrations: 0 });
     const direct = loading ? null : registrations.list.filter(r => !r.referredBy).length;
 
-    const exportCsv = () => {
-        const headers = ['Ambassador', 'Name', 'Email', 'Phone', 'College', 'Year', 'Registered At'];
-        const lines = registrations.list
-            .filter(r => r.referredBy)
-            .map(r => [nameOf(r.referredBy, r.referrerName), r.name, r.email, r.phone, r.college, r.year, formatDate(r.registeredAt)].map(csvCell).join(','));
-        const blob = new Blob([[headers.join(','), ...lines].join('\n')], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${(event?.name || 'event').replace(/\s+/g, '_')}_ambassador_referrals.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+    // Registrations shown/exported: everyone, or only those whose ambassador matches the type filter.
+    const exportList = useMemo(() => (typeFilter === 'all' ? registrations.list : registrations.list.filter(r => {
+        if (!r.referredBy) return false;
+        return (typeOf(r.referredBy) || 'other') === typeFilter;
+    })), [registrations.list, typeFilter, volunteers]); // eslint-disable-line react-hooks/exhaustive-deps
+    const ambassadorOf = (uid, fallback) => ({ name: nameOf(uid, fallback), type: typeOf(uid) || '' });
+
+    const exportCsv = () => exportRegistrationsCsv(event, exportList, ambassadorOf);
+    const exportPdf = async () => {
+        setPdfBusy(true);
+        try {
+            const funnel = rows.map(r => ({ ...r, name: nameOf(r.refId, byRef[r.refId]?.[0]?.referrerName), type: typeOf(r.refId) }));
+            await exportRegistrationsPdf(event, exportList, ambassadorOf, funnel);
+        } catch (err) {
+            console.error('PDF export failed', err);
+            addToast('Could not create the PDF', 'error');
+        } finally {
+            setPdfBusy(false);
+        }
     };
 
     const tiles = [
@@ -105,8 +125,8 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
                         <Megaphone className="w-5 h-5 text-ieee-blue" /> Ambassador Monitor
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Clicks, visitors and registrations per ambassador link.</p>
-                    {isExternal && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">This event sends people to the main website — registrations happen there, so only clicks and visitors are counted.</p>
+                    {isExternal && !isSuperAdmin && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">This event registers on the main website; registrations appear here once the super admin connects its form.</p>
                     )}
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -131,13 +151,26 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
                     </select>
                     <button
                         onClick={exportCsv}
-                        disabled={loading || totals.registrations === 0}
+                        disabled={loading || exportList.length === 0}
+                        title="Download every registration with all form answers"
+                        aria-label="Download registrations as CSV"
                         className="flex items-center gap-2 px-4 py-2 bg-ieee-blue text-white rounded-xl text-sm font-bold hover:bg-ieee-blue/90 transition disabled:opacity-50"
                     >
                         <Download className="w-4 h-4" /> CSV
                     </button>
+                    <button
+                        onClick={exportPdf}
+                        disabled={loading || pdfBusy || exportList.length === 0}
+                        title="Download a PDF report"
+                        aria-label="Download registrations as PDF"
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-bold hover:opacity-90 transition disabled:opacity-50"
+                    >
+                        {pdfBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF
+                    </button>
                 </div>
             </div>
+
+            {isExternal && isSuperAdmin && <MainSiteSync event={event} onImported={() => setReload(n => n + 1)} />}
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                 {tiles.map(t => (
@@ -199,8 +232,8 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
                                                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                                                 {list.map(reg => (
                                                                     <tr key={reg.id}>
-                                                                        <td className="py-2 pr-3 text-sm font-semibold text-gray-900 dark:text-white">{reg.name}<span className="block text-[10px] text-gray-400 font-normal">{reg.year}</span></td>
-                                                                        <td className="py-2 pr-3 text-xs text-gray-600 dark:text-gray-300">{reg.email}<span className="block text-gray-400">{reg.phone}</span></td>
+                                                                        <td className="py-2 pr-3 text-sm font-semibold text-gray-900 dark:text-white align-top">{reg.name}<span className="block text-[10px] text-gray-400 font-normal">{reg.year} · {sourceLabel(reg)}</span><Answers answers={reg.answers} /></td>
+                                                                        <td className="py-2 pr-3 text-xs text-gray-600 dark:text-gray-300 align-top">{reg.email}<span className="block text-gray-400">{reg.phone}</span></td>
                                                                         <td className="py-2 pr-3 text-xs text-gray-600 dark:text-gray-300">{reg.college}</td>
                                                                         <td className="py-2 text-[10px] text-gray-400 whitespace-nowrap">{formatDate(reg.registeredAt)}</td>
                                                                     </tr>
@@ -218,6 +251,43 @@ export default function AmbassadorMonitor({ events = [], volunteers = [] }) {
                     </table>
                 )}
             </div>
+
+            {/* Every registration (this website + main website) with full form answers */}
+            {!loading && exportList.length > 0 && (
+                <div className="mt-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                    <h3 className="px-4 pt-4 pb-2 text-sm font-bold text-gray-900 dark:text-white">
+                        All registrations <span className="text-gray-400 font-semibold">({exportList.length})</span>
+                    </h3>
+                    <ul className="divide-y divide-gray-50 dark:divide-gray-800">
+                        {(showAll ? exportList : exportList.slice(0, PREVIEW)).map(reg => {
+                            const open = openReg === reg.id;
+                            const hasAnswers = Object.keys(reg.answers || {}).length > 0;
+                            return (
+                                <li key={reg.id} className="px-4 py-2.5">
+                                    <button type="button" onClick={() => setOpenReg(open ? null : reg.id)} disabled={!hasAnswers} aria-expanded={hasAnswers ? open : undefined}
+                                        className="w-full flex flex-wrap items-center gap-x-3 gap-y-0.5 text-left">
+                                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{reg.name || reg.email || reg.phone}</span>
+                                        <span className="text-xs text-gray-500">{[reg.email, reg.phone, reg.college].filter(Boolean).join(' · ')}</span>
+                                        <span className="ml-auto flex items-center gap-2 text-[10px]">
+                                            <span className={`px-1.5 py-0.5 rounded-md font-bold ${reg.referredBy ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
+                                                {reg.referredBy ? nameOf(reg.referredBy, reg.referrerName) : 'Direct'}
+                                            </span>
+                                            <span className="text-gray-400">{sourceLabel(reg)} · {formatDate(reg.registeredAt)}</span>
+                                            {hasAnswers && <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />}
+                                        </span>
+                                    </button>
+                                    {open && <Answers answers={reg.answers} />}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                    {exportList.length > PREVIEW && (
+                        <button type="button" onClick={() => setShowAll(v => !v)} className="w-full py-2.5 text-xs font-bold text-ieee-blue border-t border-gray-50 dark:border-gray-800">
+                            {showAll ? 'Show less' : `Show all ${exportList.length}`}
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
