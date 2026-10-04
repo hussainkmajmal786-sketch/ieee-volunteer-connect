@@ -36,7 +36,27 @@ const isOwner = (ctx, uid) => isSignedIn(ctx) && ctx.auth.uid === uid;
 export { isSuperAdmin, isAdmin };
 
 /** Fields on users/{uid} that only admins (via server endpoints) may set. */
-const PROTECTED_USER_FIELDS = ['ambassadorType', 'campusAmbassadorId', 'campusAmbassadorName'];
+const PROTECTED_USER_FIELDS = ['ambassadorType', 'campusAmbassadorId', 'campusAmbassadorName', 'photoURL', 'referrals'];
+
+export const SOCIAL_KEYS = ['linkedin', 'instagram', 'twitter', 'github', 'website', 'youtube', 'facebook', 'other'];
+
+/** Portfolio fields people edit on their own profile. */
+export function validProfileFields(d) {
+    const str = (v, max) => v === undefined || v === null || (typeof v === 'string' && v.length <= max);
+    if (!str(d.headline, 120) || !str(d.bio, 1000) || !str(d.department, 120) || !str(d.year, 40)
+        || !str(d.contactEmail, 200) || !str(d.phone, 40) || !str(d.college, 200) || !str(d.name, 100)) return false;
+    if (d.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.contactEmail)) return false;
+    if (d.showEmail !== undefined && typeof d.showEmail !== 'boolean') return false;
+    if (d.skills !== undefined && !(Array.isArray(d.skills) && d.skills.length <= 25 && d.skills.every(x => typeof x === 'string' && x.length > 0 && x.length <= 40))) return false;
+    if (d.socials !== undefined) {
+        if (!d.socials || typeof d.socials !== 'object' || Array.isArray(d.socials)) return false;
+        for (const [k, v] of Object.entries(d.socials)) {
+            if (!SOCIAL_KEYS.includes(k)) return false;
+            if (v !== '' && !(isValidExternalUrl(v) && /^https?:\/\//i.test(v))) return false;
+        }
+    }
+    return true;
+}
 
 /** Event fields that decide where shared links go — super admin only. */
 const LINK_FIELDS = ['linkMode', 'externalUrl'];
@@ -159,6 +179,9 @@ export async function canWrite(op, path, before, after, ctx) {
                 if (await isAdmin(ctx)) return true;
                 if (!isOwner(ctx, id)) return false;
                 if (changedKeys(before, after).some(k => PROTECTED_USER_FIELDS.includes(k))) return false;
+                // Validate only what changed, so old data never blocks unrelated updates.
+                const changed = Object.fromEntries(changedKeys(before, after).map(k => [k, d[k]]));
+                if (!validProfileFields(changed)) return false;
                 const roleOk = d.role === before.role || (before.role === 'STUDENT' && d.role === 'VOLUNTEER');
                 const statusOk = d.approvalStatus === before.approvalStatus
                     || (before.approvalStatus === 'PENDING' && d.approvalStatus === 'ACTIVE')
@@ -207,18 +230,41 @@ export async function canWrite(op, path, before, after, ctx) {
     }
 }
 
-// ─── Image uploads (port of the former storage.rules) ─────────
+// ─── Uploads (port of the former storage.rules, plus media folders) ───
 
-export const UPLOAD_FOLDERS = ['events', 'volunteers', 'rewards', 'teams'];
-export const UPLOAD_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MB = 1024 * 1024;
+/** What each admin upload folder accepts. SVG/HTML are never allowed. */
+export const UPLOAD_RULES = {
+    events: { types: IMAGE_TYPES, max: 5 * MB },
+    volunteers: { types: IMAGE_TYPES, max: 5 * MB },
+    rewards: { types: IMAGE_TYPES, max: 5 * MB },
+    teams: { types: IMAGE_TYPES, max: 5 * MB },
+    spotlights: { types: IMAGE_TYPES, max: 5 * MB },
+    projects: { types: IMAGE_TYPES, max: 5 * MB },
+    'project-docs': { types: ['application/pdf'], max: 15 * MB },
+    about: { types: [...IMAGE_TYPES, 'video/mp4', 'video/webm'], max: 25 * MB },
+};
+export const UPLOAD_FOLDERS = Object.keys(UPLOAD_RULES);
+export const UPLOAD_TYPES = IMAGE_TYPES;
+export const MAX_UPLOAD_BYTES = 5 * MB;
 const UPLOAD_ROLES = ['admin', 'organizer', 'ADMIN', 'SUPER_ADMIN'];
 
 /** Returns null when allowed, otherwise the reason the upload is refused. */
 export function uploadProblem({ role, folder, type, size }) {
     if (!UPLOAD_ROLES.includes(role)) return 'Only admins can upload images';
-    if (!UPLOAD_FOLDERS.includes(folder)) return 'Uploads are not allowed in that folder';
-    if (!UPLOAD_TYPES.includes(type)) return 'Only JPEG, PNG, WebP or GIF images are allowed';
-    if (!(size < MAX_UPLOAD_BYTES)) return 'Images must be smaller than 5MB';
+    const rule = UPLOAD_RULES[folder];
+    if (!rule) return 'Uploads are not allowed in that folder';
+    if (!rule.types.includes(type)) {
+        return rule.types === IMAGE_TYPES ? 'Only JPEG, PNG, WebP or GIF images are allowed' : `This folder accepts: ${rule.types.map(t => t.split('/')[1].toUpperCase()).join(', ')}`;
+    }
+    if (!(size < rule.max)) return `Files here must be smaller than ${Math.round(rule.max / MB)}MB`;
+    return null;
+}
+
+/** Profile photo uploaded by the account owner. */
+export function avatarProblem({ type, size }) {
+    if (!IMAGE_TYPES.includes(type)) return 'Use a JPEG, PNG, WebP or GIF image';
+    if (!(size < 3 * MB)) return 'Profile photos must be smaller than 3MB';
     return null;
 }

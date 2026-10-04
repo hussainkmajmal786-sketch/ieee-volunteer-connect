@@ -15,6 +15,7 @@ import { registerForEvent, recordLinkClick } from './functions.js';
 import { applyClassAmbassador, reviewApplication, notifyAmbassadors, shortLink } from './ambassadors.js';
 import { createShare, listShares, downloadShare, deleteShare } from './sharedFiles.js';
 import { listParticipants, sendBatch } from './messaging.js';
+import { listPeople, getPerson, leaderboard, eventParticipants, uploadAvatar } from './people.js';
 import { putFile, getFile } from './files.js';
 
 const STATUS = {
@@ -178,6 +179,14 @@ app.post('/api/admin/ambassador-applications/:id', async (c) => {
     return c.json(await reviewApplication(c.env, c.get('ctx'), c.req.param('id'), status));
 });
 
+// ─── People: portfolios, leaderboard, participants ───────────
+
+app.get('/api/public/people', (c) => listPeople(c.env));
+app.get('/api/public/people/:id', (c) => getPerson(c.env, c.req.param('id')));
+app.get('/api/public/leaderboard', (c) => leaderboard(c.env));
+app.get('/api/events/:id/participants', async (c) => c.json(await eventParticipants(c.env, c.get('ctx'), c.req.param('id'))));
+app.post('/api/me/avatar', async (c) => c.json(await uploadAvatar(c.env, c.get('ctx'), await c.req.formData())));
+
 // ─── Shared files (super admin → ambassadors / volunteers) ────
 
 app.post('/api/shared-files', async (c) => c.json(await createShare(c.env, c.get('ctx'), await c.req.formData())));
@@ -208,7 +217,7 @@ app.get('/files/*', async (c) => {
     const key = decodeURIComponent(c.req.path.slice('/files/'.length));
     // Shared files are private: they're only served through the checked download route.
     if (key.startsWith('shared/')) return c.notFound();
-    const res = await getFile(c.env, key);
+    const res = await getFile(c.env, key, c.req.header('Range'));
     return res || c.notFound();
 });
 

@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { isAdminRole } from "../utils/constants";
 import MetaTags from "../shared/MetaTags";
 import Hero3D from "../components/Hero3D";
+import AboutSection from "../components/landing/AboutSection";
 import StatsGrid from "../components/landing/StatsGrid";
 import FeaturedOpportunities from "../components/landing/FeaturedOpportunities";
 import EventsShowcase from "../components/landing/EventsShowcase";
@@ -91,6 +92,7 @@ export default function LandingPage() {
             </section>
 
             {/* ===== ALL SECTIONS ===== */}
+            <AboutSection />
             <StatsGrid />
             <FeaturedOpportunities />
             <EventsShowcase />

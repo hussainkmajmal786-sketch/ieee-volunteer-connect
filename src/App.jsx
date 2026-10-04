@@ -24,6 +24,8 @@ const ResourcesPage = lazy(() => import("./pages/ResourcesPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const ClassAmbassadorApplyPage = lazy(() => import("./pages/ClassAmbassadorApplyPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
 
 function PageLoader() {
   return (
@@ -87,6 +89,12 @@ function App() {
             <Route path="leaderboard" element={<LeaderboardPage />} />
             <Route path="opportunities" element={<OpportunitiesPage />} />
             <Route path="volunteers" element={<VolunteersPage />} />
+            <Route path="volunteers/:id" element={<PortfolioPage />} />
+            <Route path="profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
             <Route path="chapters" element={<ChaptersPage />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="resources" element={

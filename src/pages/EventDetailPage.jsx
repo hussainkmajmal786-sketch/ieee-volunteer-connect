@@ -1,6 +1,6 @@
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn, ExternalLink } from "lucide-react";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import Card from "../components/Card";
@@ -12,6 +12,7 @@ import { doc, collection, query, onSnapshot, orderBy, limit } from "../lib/fires
 import { httpsCallable } from "../lib/functions";
 import MetaTags from "../shared/MetaTags";
 import { trackingService } from "../services/trackingService";
+import EventParticipants from "../components/EventParticipants";
 import { rememberReferral, resolveReferral, buildReferralLink } from "../utils/referral";
 
 // Countdown Timer Component
@@ -181,14 +182,9 @@ export default function EventDetailPage() {
         return unsubscribe;
     }, [id]);
 
-    // Listen to registrations count in real-time
-    useEffect(() => {
-        const q = query(collection(db, "events", id, "registrations"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            setRegCount(snapshot.size);
-        });
-        return unsubscribe;
-    }, [id]);
+    // The registration count comes from the public participants endpoint (the
+    // registrations list itself is private), refreshed when the event changes.
+    const onParticipantCount = useCallback((n) => setRegCount(n), []);
 
     // Listen to notifications for this event
     useEffect(() => {
@@ -376,6 +372,8 @@ export default function EventDetailPage() {
                                 </div>
                             </div>
                         </div>
+
+                        <EventParticipants eventId={id} refreshKey={`${event.participants || 0}-${registered}`} onCount={onParticipantCount} />
 
                         {/* Description */}
                         <div className="mb-8">

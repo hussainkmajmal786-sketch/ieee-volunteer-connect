@@ -4,6 +4,7 @@ import { writeDoc, getDocRow, runQuery, autoId, applyUpdate, DocError } from './
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const LINK_CLICK_LIMIT_PER_WINDOW = 10;
 const LINK_CLICK_LIMIT_PER_IP = 120;
+export const REFERRAL_POINTS = 10;
 
 export function requireString(value, field, maxLength) {
     if (typeof value !== 'string' || value.trim().length === 0 || value.length > maxLength) {
@@ -95,6 +96,14 @@ export async function registerForEvent(env, auth, data) {
     const counters = { participants: { __op: 'increment', n: 1 } };
     if (registration.referredBy) counters[`refCounts.${registration.referredBy}`] = { __op: 'increment', n: 1 };
     await updateFields(db, `events/${eventId}`, counters);
+
+    // The ambassador earns points for every registration through their link.
+    if (registration.referredBy) {
+        await updateFields(db, `users/${registration.referredBy}`, {
+            points: { __op: 'increment', n: REFERRAL_POINTS },
+            referrals: { __op: 'increment', n: 1 },
+        });
+    }
 
     return { ok: true };
 }

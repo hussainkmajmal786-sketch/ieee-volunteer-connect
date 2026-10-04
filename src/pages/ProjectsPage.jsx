@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Github, ExternalLink, Search, Filter, FolderOpen, X, Users, Cpu } from "lucide-react";
+import { Github, ExternalLink, Search, Filter, FolderOpen, X, Users, Cpu, FileText } from "lucide-react";
 import { db } from "../lib/backend";
 import { collection, onSnapshot, query, orderBy } from "../lib/firestore";
+import { projectLinks, projectImages } from "../utils/projects";
 import MetaTags from "../shared/MetaTags";
 
 const CATS = ["All", "AI", "IoT", "Web", "Robotics", "Sustainability"];
@@ -65,6 +66,9 @@ export default function ProjectsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filtered.map((p, i) => (
                         <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} whileHover={{ y: -4 }} onClick={() => setSelected(p)} className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all cursor-pointer group">
+                            {projectImages(p)[0] && (
+                                <img src={projectImages(p)[0]} alt="" loading="lazy" className="-mx-6 -mt-6 mb-4 w-[calc(100%+3rem)] max-w-none h-44 object-cover rounded-t-2xl" />
+                            )}
                             <div className="flex items-center justify-between mb-3">
                                 <span className={`px-2.5 py-1 text-xs font-bold rounded-lg ${CAT_COLORS[p.category] || "bg-gray-100 text-gray-600"}`}>{p.category}</span>
                                 <div className="flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${STATUS[p.status] || "bg-gray-400"}`} /><span className="text-xs font-semibold text-gray-500">{p.status}</span></div>
@@ -127,23 +131,42 @@ export default function ProjectsPage() {
                                     </div>
                                 </div>
 
+                                {/* Photos */}
+                                {projectImages(selected).length > 0 && (
+                                    <div className="mb-5">
+                                        <p className="text-xs font-bold uppercase text-gray-400 mb-2 tracking-wider">Photos</p>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                            {projectImages(selected).map(u => (
+                                                <a key={u} href={u} target="_blank" rel="noopener noreferrer"><img src={u} alt="" loading="lazy" className="w-full h-24 object-cover rounded-xl hover:opacity-90" /></a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Documents */}
+                                {(selected.docs || []).length > 0 && (
+                                    <div className="mb-5">
+                                        <p className="text-xs font-bold uppercase text-gray-400 mb-2 tracking-wider">Documents</p>
+                                        <div className="flex flex-col gap-2">
+                                            {selected.docs.map(d => (
+                                                <a key={d.url} href={d.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300 hover:border-ieee-blue">
+                                                    <FileText className="w-4 h-4 text-red-500 shrink-0" /> <span className="truncate">{d.name}</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* External Links */}
                                 <div>
                                     <p className="text-xs font-bold uppercase text-gray-400 mb-2 tracking-wider">Links</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {selected.github && selected.github !== "#" && (
-                                            <a href={selected.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 dark:bg-gray-800 text-white hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors text-sm font-semibold border border-gray-700">
-                                                <Github className="w-4 h-4" /> View on GitHub
+                                        {projectLinks(selected).map(l => (
+                                            <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-ieee-blue text-white hover:bg-ieee-blue/90 transition-colors text-sm font-semibold">
+                                                {/github\.com/i.test(l.url) ? <Github className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />} {l.label}
                                             </a>
-                                        )}
-                                        {selected.demo && selected.demo !== "#" && (
-                                            <a href={selected.demo} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-ieee-blue text-white hover:bg-ieee-blue/90 transition-colors text-sm font-semibold">
-                                                <ExternalLink className="w-4 h-4" /> Live Demo
-                                            </a>
-                                        )}
-                                        {(!selected.github || selected.github === "#") && (!selected.demo || selected.demo === "#") && (
-                                            <p className="text-sm text-gray-400 italic">No external links available yet.</p>
-                                        )}
+                                        ))}
+                                        {projectLinks(selected).length === 0 && <p className="text-sm text-gray-400 italic">No external links available yet.</p>}
                                     </div>
                                 </div>
                             </div>
