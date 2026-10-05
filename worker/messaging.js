@@ -4,13 +4,17 @@
 import { DocError, writeDoc, autoId, applyUpdate } from './docstore.js';
 import { isSuperAdmin } from './rules.js';
 import { requireString, optionalString, safeFieldKey } from './functions.js';
+import { listSubscribers, subscribersOnly } from './newsletter.js';
+import { sendViaBrevo, senderPool } from './senders.js';
+
+export const NEWSLETTER_AUDIENCE = '__newsletter__';
 
 export const MAX_BATCH = 40;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function channelStatus(env) {
     return {
-        email: !!(env.BREVO_API_KEY && env.BREVO_SENDER_EMAIL),
+        email: !!(env.BREVO_API_KEY && senderPool(env).length),
         sms: !!env.FAST2SMS_API_KEY,
         whatsapp: !!(env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID),
         emailLimitPerDay: 300,
@@ -35,6 +39,14 @@ export function indianMobile(phone) {
  */
 export async function listParticipants(env, ctx, eventId) {
     await requireSuperAdmin(ctx);
+    if (eventId === NEWSLETTER_AUDIENCE) {
+        const { people, counts } = await listSubscribers(env);
+        return {
+            participants: people,
+            counts: { total: people.length, withEmail: people.length, withPhone: 0, pending: counts.pending || 0, unsubscribed: counts.unsubscribed || 0 },
+            channels: channelStatus(env),
+        };
+    }
     const db = env.DB;
     const event = eventId ? safeFieldKey(eventId) : null;
     const stmt = event
@@ -71,27 +83,24 @@ export async function listParticipants(env, ctx, eventId) {
 
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function emailHtml(message) {
+function emailHtml(message, newsletter = false) {
     const body = escapeHtml(message).replace(/\{\{name\}\}/g, '{{params.name}}').replace(/\n/g, '<br>');
+    const why = newsletter
+        ? 'You are receiving this because you subscribed to the IEEE SB CEK newsletter. <a href="{{params.unsub}}" style="color:#6b7280">Unsubscribe</a>'
+        : 'You are receiving this because you registered for an IEEE event.';
     return `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#1f2937">${body}
 <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-<p style="font-size:12px;color:#6b7280">IEEE SB CEK · You are receiving this because you registered for an IEEE event.</p></div>`;
+<p style="font-size:12px;color:#6b7280">IEEE SB CEK · ${why}</p></div>`;
 }
 
-async function sendEmails(env, recipients, { subject, message }) {
-    const res = await fetch(env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-            sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'IEEE SB CEK' },
-            subject,
-            htmlContent: emailHtml(message),
-            // One version per person so nobody sees anyone else's address.
-            messageVersions: recipients.map(r => ({ to: [{ email: r.email, name: r.name || undefined }], params: { name: r.name || 'there' } })),
-        }),
+async function sendEmails(env, recipients, { subject, message, newsletter = false }) {
+    const { sender } = await sendViaBrevo(env, {
+        subject,
+        htmlContent: emailHtml(message, newsletter),
+        // One version per person so nobody sees anyone else's address.
+        messageVersions: recipients.map(r => ({ to: [{ email: r.email, name: r.name || undefined }], params: { name: r.name || 'there', unsub: r.unsub || '' } })),
     });
-    if (!res.ok) throw new Error(`Brevo ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    return { sent: recipients.length, failed: 0 };
+    return { sent: recipients.length, failed: 0, sender };
 }
 
 async function sendSms(env, recipients, { message }) {
@@ -144,11 +153,13 @@ async function sendWhatsApp(env, recipients, { message }) {
  * Send one batch. The first batch creates a broadcasts/{id} log entry; later
  * batches pass its id so the totals add up.
  */
-export async function sendBatch(env, ctx, body) {
+export async function sendBatch(env, ctx, body, origin = '') {
     await requireSuperAdmin(ctx);
     const channel = body?.channel;
     const status = channelStatus(env);
     if (!['email', 'sms', 'whatsapp'].includes(channel)) throw new DocError('invalid-argument', 'Unknown channel');
+    const newsletter = body?.audience === 'newsletter';
+    if (newsletter && channel !== 'email') throw new DocError('invalid-argument', 'The newsletter is sent by email only');
     if (!status[channel]) throw new DocError('failed-precondition', `${channel} is not set up yet`);
 
     const message = requireString(body?.message, 'message', channel === 'email' ? 10000 : 1000);
@@ -161,16 +172,18 @@ export async function sendBatch(env, ctx, body) {
         email: EMAIL_RE.test(String(r?.email || '')) ? String(r.email).toLowerCase() : null,
         phone: indianMobile(r?.phone),
     })).filter(r => (channel === 'email' ? r.email : r.phone));
-    const skipped = raw.length - recipients.length;
+    // Newsletter mail only ever goes to confirmed subscribers, each with their own unsubscribe link.
+    const toSend = newsletter ? await subscribersOnly(env, recipients, origin) : recipients;
+    const skipped = raw.length - toSend.length;
 
     let result = { sent: 0, failed: 0 };
-    if (recipients.length) {
+    if (toSend.length) {
         try {
-            result = channel === 'email' ? await sendEmails(env, recipients, { subject, message })
-                : channel === 'sms' ? await sendSms(env, recipients, { message })
-                    : await sendWhatsApp(env, recipients, { message });
+            result = channel === 'email' ? await sendEmails(env, toSend, { subject, message, newsletter })
+                : channel === 'sms' ? await sendSms(env, toSend, { message })
+                    : await sendWhatsApp(env, toSend, { message });
         } catch (err) {
-            result = { sent: 0, failed: recipients.length, error: err.message };
+            result = { sent: 0, failed: toSend.length, error: err.message };
         }
     }
 

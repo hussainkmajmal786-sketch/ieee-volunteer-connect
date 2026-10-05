@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { createAuthMiddleware } from 'better-auth/api';
+import { sendViaBrevo, senderPool } from './senders.js';
 import { hashPassword, verifyPbkdf2, verifyWithFirebase, FIREBASE_PREFIX } from './password.js';
 import { writeDoc } from './docstore.js';
 
@@ -15,17 +16,9 @@ export function getAuth(env) {
     return auth;
 }
 
-async function sendEmail(env, to, subject, html) {
-    if (env.BREVO_API_KEY && env.BREVO_SENDER_EMAIL) {
-        const res = await fetch(env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({
-                sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'IEEE SB CEK' },
-                to: [{ email: to }], subject, htmlContent: html,
-            }),
-        });
-        if (!res.ok) throw new Error(`Email send failed: ${res.status}`);
+export async function sendEmail(env, to, subject, html) {
+    if (env.BREVO_API_KEY && senderPool(env).length) {
+        await sendViaBrevo(env, { to: [{ email: to }], subject, htmlContent: html });
         return;
     }
     if (!env.RESEND_API_KEY) throw new Error('Email is not configured (BREVO_API_KEY)');

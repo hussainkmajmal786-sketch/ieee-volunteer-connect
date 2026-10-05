@@ -1,14 +1,23 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Mail, Phone, MapPin, Send, Github, Twitter, Linkedin, MessageCircle, CheckCircle2 } from "lucide-react";
+import { Mail, MapPin, Send, Github, Twitter, Linkedin, MessageCircle, CheckCircle2 } from "lucide-react";
+import { CONTACT_EMAIL, whatsappLink } from "../utils/contact";
 import MetaTags from "../shared/MetaTags";
 
 export default function ContactPage() {
     const [submitted, setSubmitted] = useState(false);
     const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
 
+    // The message opens in WhatsApp (or the mail app) ready to send to the team.
+    const composed = () => `Hi IEEE SB CEK,\n\n${form.message}\n\n— ${form.name} (${form.email})`;
     const handleSubmit = (e) => {
         e.preventDefault();
+        const via = e.nativeEvent.submitter?.value;
+        if (via === "email") {
+            window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(form.subject)}&body=${encodeURIComponent(composed())}`;
+        } else {
+            window.open(whatsappLink(undefined, `*${form.subject}*\n${composed()}`), "_blank", "noopener");
+        }
         setSubmitted(true);
         setForm({ name: "", email: "", subject: "", message: "" });
         setTimeout(() => setSubmitted(false), 5000);
@@ -35,12 +44,13 @@ export default function ContactPage() {
                         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Get in Touch</h3>
                             <div className="space-y-4">
-                                <a href="mailto:ieee@ceknpy.ac.in" className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300 hover:text-ieee-blue transition-colors">
-                                    <div className="p-2 rounded-lg bg-ieee-blue/10"><Mail className="w-4 h-4 text-ieee-blue" /></div>ieee@ceknpy.ac.in
+                                <a href={`mailto:${CONTACT_EMAIL}`} className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300 hover:text-ieee-blue transition-colors min-w-0">
+                                    <div className="p-2 rounded-lg bg-ieee-blue/10 shrink-0"><Mail className="w-4 h-4 text-ieee-blue" /></div><span className="break-all">{CONTACT_EMAIL}</span>
                                 </a>
-                                <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-                                    <div className="p-2 rounded-lg bg-ieee-blue/10"><Phone className="w-4 h-4 text-ieee-blue" /></div>+91 98765 43210
-                                </div>
+                                <a href={whatsappLink(undefined, "Hi IEEE SB CEK! ")} target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold transition">
+                                    <MessageCircle className="w-4 h-4" /> Chat with us on WhatsApp
+                                </a>
                                 <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
                                     <div className="p-2 rounded-lg bg-ieee-blue/10"><MapPin className="w-4 h-4 text-ieee-blue" /></div>College of Engineering Kidangoor, Kottayam, Kerala
                                 </div>
@@ -53,7 +63,7 @@ export default function ContactPage() {
                                     { icon: Twitter, href: "https://twitter.com/IEEECEK", color: "hover:bg-blue-500" },
                                     { icon: Linkedin, href: "https://linkedin.com/company/ieee-sb-cek", color: "hover:bg-blue-600" },
                                     { icon: Github, href: "https://github.com/ieeecek", color: "hover:bg-gray-900 dark:hover:bg-white dark:hover:text-gray-900" },
-                                    { icon: MessageCircle, href: "https://chat.whatsapp.com", color: "hover:bg-green-500" },
+                                    { icon: MessageCircle, href: whatsappLink(), color: "hover:bg-green-500" },
                                 ].map(({ icon: Icon, href, color }) => (
                                     <a key={href} href={href} target="_blank" rel="noopener noreferrer" className={`p-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-400 ${color} hover:text-white hover:border-transparent transition-all`}>
                                         <Icon className="w-5 h-5" />
@@ -67,8 +77,8 @@ export default function ContactPage() {
                         {submitted ? (
                             <div className="flex flex-col items-center justify-center py-16 text-center">
                                 <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Message Sent!</h3>
-                                <p className="text-gray-500">We&apos;ll get back to you within 24 hours.</p>
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Almost there!</h3>
+                                <p className="text-gray-500">Your message is ready in WhatsApp / your mail app — just tap send. We&apos;ll get back to you within 24 hours.</p>
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-5">
@@ -91,7 +101,12 @@ export default function ContactPage() {
                                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 block">Message</label>
                                     <textarea name="message" value={form.message} onChange={handleChange} required rows={5} className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-ieee-blue/50 outline-none resize-none" placeholder="Your message..." />
                                 </div>
-                                <button type="submit" className="btn-primary !px-8 !py-3 text-sm w-full sm:w-auto">Send Message <Send className="w-4 h-4" /></button>
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                    <button type="submit" value="whatsapp" className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold transition">
+                                        <MessageCircle className="w-4 h-4" /> Send on WhatsApp
+                                    </button>
+                                    <button type="submit" value="email" className="btn-primary !px-8 !py-3 text-sm">Send by Email <Send className="w-4 h-4" /></button>
+                                </div>
                             </form>
                         )}
                     </motion.div>

@@ -1,24 +1,34 @@
 import { Link } from "react-router-dom";
 import { Github, Twitter, Linkedin, Mail, ArrowUpRight, Heart, MessageCircle } from "lucide-react";
 import { useState } from "react";
+import { CONTACT_EMAIL, whatsappLink } from "../utils/contact";
+import { api } from "../lib/api";
 
 export default function Footer() {
-    const [subscribed, setSubscribed] = useState(false);
+    // idle | sending | pending (confirmation email sent) | subscribed | already | error
+    const [state, setState] = useState({ status: "idle", message: "" });
     const [email, setEmail] = useState("");
+    const [trap, setTrap] = useState(""); // honeypot: real people never see or fill this
 
-    const handleNewsletter = (e) => {
+    const handleNewsletter = async (e) => {
         e.preventDefault();
-        setSubscribed(true);
-        setEmail("");
-        setTimeout(() => setSubscribed(false), 4000);
+        setState({ status: "sending", message: "" });
+        try {
+            const r = await api("/api/newsletter/subscribe", { email, website: trap });
+            setState({ status: r.status, message: "" });
+            setEmail("");
+        } catch (err) {
+            setState({ status: "error", message: err.message || "Something went wrong. Please try again." });
+        }
     };
+    const done = ["pending", "subscribed", "already"].includes(state.status);
 
     return (
-        <footer className="relative bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 mt-auto" role="contentinfo">
+        <footer className="relative overflow-hidden bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 mt-auto" role="contentinfo">
             {/* Gradient top border */}
             <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-ieee-blue/40 to-transparent" />
 
-            <div className="max-w-7xl mx-auto py-14 px-4 sm:px-6 lg:px-8">
+            <div className="relative z-10 max-w-7xl mx-auto pt-14 pb-16 sm:pb-24 lg:pb-28 px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
                     {/* Brand */}
                     <div className="lg:col-span-2">
@@ -30,17 +40,21 @@ export default function Footer() {
                                 Volunteer <span className="text-ieee-blue dark:text-cyan-400">Connect</span>
                             </span>
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-5 max-w-sm">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-3 max-w-sm">
                             Empowering students to lead, inspire, and build the future through global IEEE events and volunteer programs.
                         </p>
+                        <a href={`mailto:${CONTACT_EMAIL}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-ieee-blue dark:hover:text-cyan-400 mb-5 break-all">
+                            <Mail className="w-4 h-4 shrink-0" /> {CONTACT_EMAIL}
+                        </a>
                         <div className="flex gap-2">
                             {[
                                 { icon: Twitter, href: "https://twitter.com/IEEECEK", label: "Twitter", hover: "hover:bg-blue-500 hover:text-white hover:border-blue-500" },
                                 { icon: Linkedin, href: "https://linkedin.com/company/ieee-sb-cek", label: "LinkedIn", hover: "hover:bg-blue-600 hover:text-white hover:border-blue-600" },
                                 { icon: Github, href: "https://github.com/ieeecek", label: "GitHub", hover: "hover:bg-gray-900 hover:text-white hover:border-gray-900 dark:hover:bg-white dark:hover:text-gray-900" },
-                                { icon: MessageCircle, href: "https://chat.whatsapp.com", label: "WhatsApp", hover: "hover:bg-green-500 hover:text-white hover:border-green-500" },
+                                { icon: MessageCircle, href: whatsappLink(), label: "WhatsApp", hover: "hover:bg-green-500 hover:text-white hover:border-green-500" },
+                                { icon: Mail, href: `mailto:${CONTACT_EMAIL}`, label: "Email", hover: "hover:bg-ieee-blue hover:text-white hover:border-ieee-blue" },
                             ].map(({ icon: Icon, href, label, hover }) => (
-                                <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={`Follow us on ${label}`} className={`p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-400 transition-all duration-200 ${hover}`}>
+                                <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label === "Email" ? "Email us" : label === "WhatsApp" ? "Chat with us on WhatsApp" : `Follow us on ${label}`} className={`p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-400 transition-all duration-200 ${hover}`}>
                                     <Icon className="w-4 h-4" />
                                 </a>
                             ))}
@@ -95,16 +109,23 @@ export default function Footer() {
                     <div>
                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Newsletter</h4>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Get updates on new events and features.</p>
-                        {subscribed ? (
-                            <div className="flex items-center gap-2 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-                                <span className="text-green-600 dark:text-green-400 text-sm font-semibold">✓ Thanks for subscribing!</span>
+                        {done ? (
+                            <div role="status" className="px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-sm text-green-700 dark:text-green-400">
+                                {state.status === "pending" && <><b>Almost done!</b> Check your inbox and tap the confirmation link to finish subscribing.</>}
+                                {state.status === "subscribed" && <><b>✓ You&apos;re subscribed.</b> Thanks for joining!</>}
+                                {state.status === "already" && <><b>✓ You&apos;re already subscribed.</b> Thanks for being with us!</>}
                             </div>
                         ) : (
-                            <form onSubmit={handleNewsletter} className="flex gap-2">
-                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@ieee.org" aria-label="Email for newsletter" className="flex-grow px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue/50 outline-none transition" required />
-                                <button type="submit" className="px-4 py-2.5 bg-ieee-blue text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition shrink-0 shadow-sm hover:shadow-md" aria-label="Subscribe">
-                                    <Mail className="w-4 h-4" />
-                                </button>
+                            <form onSubmit={handleNewsletter} className="space-y-2">
+                                <div className="flex gap-2">
+                                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@ieee.org" aria-label="Email for newsletter" autoComplete="email" className="flex-grow min-w-0 px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue/50 outline-none transition" required />
+                                    <button type="submit" disabled={state.status === "sending"} className="px-4 py-2.5 bg-ieee-blue text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition shrink-0 shadow-sm hover:shadow-md disabled:opacity-60" aria-label="Subscribe">
+                                        {state.status === "sending" ? <span className="block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Mail className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                                <input type="text" name="website" value={trap} onChange={(e) => setTrap(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] w-px h-px opacity-0" />
+                                {state.status === "error" && <p role="alert" className="text-xs text-red-500">{state.message}</p>}
+                                <p className="text-[11px] text-gray-400">No spam — unsubscribe any time.</p>
                             </form>
                         )}
                     </div>
@@ -124,6 +145,13 @@ export default function Footer() {
                         <a href="https://www.ieee.org/about/corporate/governance/p7-8.html" target="_blank" rel="noopener noreferrer" className="hover:text-gray-600 dark:hover:text-gray-300 transition">Terms of Service</a>
                     </div>
                 </div>
+            </div>
+
+            {/* Big shaded wordmark behind the bottom of the footer */}
+            <div aria-hidden="true" className="pointer-events-none select-none absolute inset-x-0 bottom-0 flex justify-center overflow-hidden">
+                <span className="block whitespace-nowrap font-black uppercase leading-[0.8] tracking-tighter text-[6.4vw] translate-y-[22%] bg-gradient-to-b from-ieee-blue/15 via-ieee-blue/[0.07] to-transparent dark:from-cyan-400/15 dark:via-cyan-400/[0.06] bg-clip-text text-transparent">
+                    IEEE Volunteer Connect
+                </span>
             </div>
         </footer>
     );

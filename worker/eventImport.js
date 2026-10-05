@@ -12,7 +12,8 @@ import { isAdmin, isValidExternalUrl, IMAGE_TYPES, MB } from './rules.js';
 import { putFile } from './files.js';
 
 export const AI_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
-export const CATEGORIES = ['Workshop', 'Seminar', 'Competition', 'Hackathon', 'Meetup'];
+export const CATEGORIES = ['Hackathon', 'Competition', 'Workshop', 'Tech Fest', 'Project Expo', 'Conference', 'Conclave', 'Seminar', 'Networking', 'Bootcamp', 'Meetup', 'Cultural', 'Sports', 'Other'];
+export const MODES = ['Offline', 'Online', 'Hybrid'];
 const MAX_HTML = 2 * MB;
 const MAX_IMAGE = 5 * MB;
 const MAX_VIDEO = 25 * MB;
@@ -33,7 +34,11 @@ const EVENT_SCHEMA = {
         description: { type: 'string', description: '2-4 sentence description for students, in English' },
         organizer: { type: 'string' },
         registrationUrl: { type: 'string', description: 'Registration link if shown, else empty' },
+        mode: { type: 'string', enum: MODES },
         fee: { type: 'string', description: 'Registration fee, e.g. "Free" or "₹100 (IEEE members ₹50)", else empty' },
+        prize: { type: 'string', description: 'Prize pool or prizes, else empty' },
+        teamSize: { type: 'string', description: 'Team size, e.g. "1-4 members", else empty' },
+        eligibility: { type: 'string', description: 'Who can take part, else empty' },
         registerBy: { type: 'string', description: 'Last date to register as YYYY-MM-DD, else empty' },
         contacts: {
             type: 'array',
@@ -192,27 +197,35 @@ export function buildDraft({ ai, page, caption }) {
     const links = [...new Set((caption || '').match(REG_LINK_RE) || [])].map(u => u.replace(/[.,;!]+$/, ''));
     const registrationUrl = [a.registrationUrl, ld.url, ...links].map(u => str(u, 2000)).find(u => publicHttpUrl(u)) || '';
 
-    const extras = [];
-    const fee = str(a.fee, 120);
-    if (fee) extras.push(`Fee: ${fee}`);
-    const regBy = isoDate(a.registerBy);
-    if (regBy) extras.push(`Register by: ${regBy}`);
     const end = isoDate(a.endDate) || isoDate(String(ld.endDate || '').slice(0, 10));
-    if (end && end !== date) extras.push(`Ends: ${end}`);
-    const organizer = str(a.organizer, 160);
-    if (organizer) extras.push(`Organised by: ${organizer}`);
+    const regBy = isoDate(a.registerBy);
     const contacts = (Array.isArray(a.contacts) ? a.contacts : [])
-        .map(c => [str(c?.name, 60), str(c?.phone, 30)].filter(Boolean).join(' '))
-        .filter(Boolean).slice(0, 4);
-    if (contacts.length) extras.push(`Contact: ${contacts.join(', ')}`);
+        .map(c => ({ name: str(c?.name, 60), phone: str(c?.phone, 30) }))
+        .filter(c => c.name || c.phone).slice(0, 4);
+    // "₹100 (IEEE members ₹50)": the first amount is the fee; the full text stays in the description.
+    const feeText = str(a.fee, 120);
+    const feeNum = /free/i.test(feeText) ? 0 : Number((/(\d[\d,]*)/.exec(feeText)?.[1] || '').replace(/,/g, ''));
+    const extras = [];
+    if (feeText && !/^\s*(free|₹?\s*\d[\d,]*)\s*$/i.test(feeText)) extras.push(`Fee: ${feeText}`);
+    if (contacts.length > 1) extras.push(`More contacts: ${contacts.slice(1).map(c => [c.name, c.phone].filter(Boolean).join(' ')).join(', ')}`);
 
     const description = str(a.description, 1500) || str(ld.description, 1500) || str(caption, 1500);
     return {
         name: str(a.name, 200) || str(ld.name, 200) || str(page?.title, 200),
         date: date ? `${date}T${time || '09:00'}` : '',
+        endDate: end && end !== date ? `${end}T18:00` : '',
+        registrationDeadline: regBy ? `${regBy}T23:59` : '',
         venue: str(a.venue, 200) || str(ld.venue, 200),
+        mode: MODES.includes(a.mode) ? a.mode : 'Offline',
         category: CATEGORIES.includes(a.category) ? a.category : 'Workshop',
         desc: [description, extras.join('\n')].filter(Boolean).join('\n\n').slice(0, 3000),
+        fee: feeText ? (Number.isFinite(feeNum) ? String(feeNum) : '') : '',
+        prize: str(a.prize, 160),
+        teamSize: str(a.teamSize, 60),
+        eligibility: str(a.eligibility, 160),
+        organizer: str(a.organizer, 160),
+        contactName: contacts[0]?.name || '',
+        contactPhone: contacts[0]?.phone || '',
         registrationUrl,
         timeGuessed: !!date && !time,
     };

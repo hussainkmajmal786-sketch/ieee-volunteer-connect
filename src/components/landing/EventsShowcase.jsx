@@ -76,19 +76,19 @@ export default function EventsShowcase() {
                         View All Events <ChevronRight className="w-4 h-4" />
                     </Link>
                 </motion.div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="columns-1 md:columns-2 lg:columns-3 gap-6">
                     {loading ? (
-                        Array(6).fill(0).map((_, i) => <EventCardSkeleton key={i} />)
+                        Array(6).fill(0).map((_, i) => <div key={i} className="break-inside-avoid mb-6"><EventCardSkeleton /></div>)
                     ) : displayEvents.length > 0 ? (
                         displayEvents.map((evt, i) => (
-                            <motion.div key={evt.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
+                            <motion.div key={evt.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="break-inside-avoid mb-6">
                                 <Link to={`/event/${evt.id}`} className="group block">
                                     <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:border-ieee-blue/30 transition-all hover:shadow-xl">
-                                        <div className="relative aspect-square overflow-hidden">
+                                        <div className="relative overflow-hidden">
                                             {evt.imageUrl ? (
-                                                <PosterImage src={evt.imageUrl} alt={evt.name} className="w-full h-full" hoverZoom />
+                                                <PosterImage src={evt.imageUrl} alt={evt.name} maxHeight="max-h-[30rem]" hoverZoom />
                                             ) : (
-                                                <div className="w-full h-full bg-gradient-to-br from-ieee-blue/20 via-cyan-500/10 to-purple-500/10 flex items-center justify-center">
+                                                <div className="w-full aspect-video bg-gradient-to-br from-ieee-blue/20 via-cyan-500/10 to-purple-500/10 flex items-center justify-center">
                                                     <Calendar className="w-12 h-12 text-ieee-blue/20" />
                                                 </div>
                                             )}
@@ -117,7 +117,7 @@ export default function EventsShowcase() {
                             </motion.div>
                         ))
                     ) : (
-                        <div className="col-span-full py-12 text-center text-gray-500">No upcoming events found.</div>
+                        <div className="[column-span:all] py-12 text-center text-gray-500">No upcoming events found.</div>
                     )}
                 </div>
             </div>
