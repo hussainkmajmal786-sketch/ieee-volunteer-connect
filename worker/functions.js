@@ -51,6 +51,26 @@ export async function rateLimit(db, subject, limit, windowMs) {
     if (row.count > limit) throw new DocError('resource-exhausted', 'Too many tracking events. Try again later.');
 }
 
+// Event times are typed in India time ("2026-12-12T10:00", no zone).
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+function istTime(value, endOfDay = false) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(typeof value === 'string' ? value : '');
+    if (!m) return null;
+    const hasTime = m[4] !== undefined;
+    return Date.UTC(+m[1], +m[2] - 1, +m[3], hasTime ? +m[4] : endOfDay ? 23 : 0, hasTime ? +m[5] : endOfDay ? 59 : 0) - IST_OFFSET_MS;
+}
+
+/** Why registration is closed (matches the event page), or null when open. */
+export function registrationClosedReason(event, now = Date.now()) {
+    const ends = istTime(event?.endDate, true) ?? istTime(event?.date, true);
+    if (ends != null && now > ends) return 'This event is over';
+    const deadline = istTime(event?.registrationDeadline, true);
+    if (deadline != null && now > deadline) return 'Registration for this event has closed';
+    const cap = Number(event?.capacity) || 0;
+    if (cap > 0 && (event?.participants || 0) >= cap) return 'All seats for this event are taken';
+    return null;
+}
+
 export async function registerForEvent(env, auth, data) {
     if (!auth) throw new DocError('unauthenticated', 'Sign in before registering for events');
     const db = env.DB;
@@ -69,7 +89,10 @@ export async function registerForEvent(env, auth, data) {
         registeredAt: { __ts: Date.now() },
     };
 
-    if (!(await getDocRow(db, `events/${eventId}`))) throw new DocError('not-found', 'Event not found');
+    const eventRow = await getDocRow(db, `events/${eventId}`);
+    if (!eventRow) throw new DocError('not-found', 'Event not found');
+    const closed = registrationClosedReason(eventRow.data);
+    if (closed) throw new DocError('failed-precondition', closed);
 
     const regsPath = `events/${eventId}/registrations`;
     const dupe = await runQuery(db, regsPath, { filters: [{ field: 'email', op: '==', value: registration.email }], limit: 1 });

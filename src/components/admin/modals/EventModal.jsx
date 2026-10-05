@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, Clock, MapPin, Link2, Globe, Home, Film, Wand2, AlertTriangle } from 'lucide-react';
 import MediaInput from '../MediaInput';
+import { CATEGORY_NAMES, EVENT_MODES } from '../../../utils/events';
 import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import Button from '../../Button';
@@ -40,6 +41,9 @@ const EventModal = ({
   const setShape = (key) => setShapeFor({ file: imageFile, key });
   const [imgEl, setImgEl] = useState(null);
   const aspect = SHAPES.find(s => s.key === shape)?.aspect ?? null;
+  // Open "More details" when editing an event that already uses them.
+  const moreOpen = ['fee', 'capacity', 'prize', 'teamSize', 'organizer', 'eligibility', 'contactName', 'contactPhone', 'mapUrl']
+    .some(k => newEvent[k] !== undefined && newEvent[k] !== null && newEvent[k] !== '') || (Array.isArray(newEvent.tags) && newEvent.tags.length > 0);
 
   const applyShape = (key, el = imgEl) => {
     setShape(key);
@@ -186,15 +190,12 @@ const EventModal = ({
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Category</label>
                   <select
+                    aria-label="Category"
                     value={newEvent.category}
                     onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-ieee-blue outline-none"
                   >
-                    <option value="Workshop">Workshop</option>
-                    <option value="Seminar">Seminar</option>
-                    <option value="Competition">Competition</option>
-                    <option value="Hackathon">Hackathon</option>
-                    <option value="Meetup">Meetup</option>
+                    {CATEGORY_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
@@ -213,6 +214,29 @@ const EventModal = ({
                 </div>
               </div>
               <div>
+                <span className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Mode</span>
+                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Mode">
+                  {EVENT_MODES.map(m => (
+                    <button key={m} type="button" role="radio" aria-checked={(newEvent.mode || 'Offline') === m} onClick={() => setNewEvent({ ...newEvent, mode: m })}
+                      className={`py-2.5 rounded-xl text-sm font-bold border transition ${(newEvent.mode || 'Offline') === m ? 'border-ieee-blue bg-ieee-blue/10 text-ieee-blue' : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-ieee-blue/50'}`}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="block">
+                  <span className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Ends <span className="font-normal text-gray-400">(optional)</span></span>
+                  <input type="datetime-local" value={newEvent.endDate || ''} min={newEvent.date || undefined}
+                    onChange={(e) => setNewEvent({ ...newEvent, endDate: e.target.value })} className={FIELD} />
+                </label>
+                <label className="block">
+                  <span className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Registration closes <span className="font-normal text-gray-400">(optional)</span></span>
+                  <input type="datetime-local" value={newEvent.registrationDeadline || ''} max={newEvent.date || undefined}
+                    onChange={(e) => setNewEvent({ ...newEvent, registrationDeadline: e.target.value })} className={FIELD} />
+                </label>
+              </div>
+              <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
                 <textarea
                   placeholder="Describe the event..."
@@ -222,6 +246,34 @@ const EventModal = ({
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none resize-none"
                 />
               </div>
+              <details className="group rounded-2xl border border-gray-200 dark:border-gray-700 p-4" open={moreOpen}>
+                <summary className="cursor-pointer list-none flex items-center justify-between text-sm font-bold text-gray-800 dark:text-gray-200">
+                  More details <span className="text-xs font-normal text-gray-400 group-open:hidden">fee, seats, prizes, team size, contact…</span>
+                </summary>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  {[
+                    { key: 'fee', label: 'Fee (₹)', type: 'number', placeholder: '0 = Free', min: 0 },
+                    { key: 'capacity', label: 'Seats', type: 'number', placeholder: 'No limit', min: 1, hint: 'Registration closes when full' },
+                    { key: 'prize', label: 'Prize pool', placeholder: 'e.g. ₹50,000 + goodies' },
+                    { key: 'teamSize', label: 'Team size', placeholder: 'e.g. 1–4 members' },
+                    { key: 'organizer', label: 'Organised by', placeholder: 'e.g. IEEE SB CEK & CS Chapter' },
+                    { key: 'eligibility', label: 'Who can join', placeholder: 'e.g. All B.Tech students' },
+                    { key: 'contactName', label: 'Contact person', placeholder: 'Name' },
+                    { key: 'contactPhone', label: 'Contact phone', type: 'tel', placeholder: '+91 98765 43210' },
+                    { key: 'mapUrl', label: 'Map link', type: 'url', placeholder: 'https://maps.app.goo.gl/…' },
+                    { key: 'tags', label: 'Tags', placeholder: 'AI, Python, Beginner', hint: 'Comma separated — shown on the event and searchable' },
+                  ].map(f => (
+                    <label key={f.key} className="block">
+                      <span className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">{f.label}</span>
+                      <input type={f.type || 'text'} min={f.min} placeholder={f.placeholder}
+                        value={Array.isArray(newEvent[f.key]) ? newEvent[f.key].join(', ') : (newEvent[f.key] ?? '')}
+                        onChange={(e) => setNewEvent({ ...newEvent, [f.key]: e.target.value })}
+                        className={`${FIELD} text-sm py-2.5`} />
+                      {f.hint && <span className="block text-[11px] text-gray-400 mt-0.5">{f.hint}</span>}
+                    </label>
+                  ))}
+                </div>
+              </details>
               {/* Promo video: upload, or a YouTube / Instagram reel link */}
               <div>
                 <MediaInput label="Promo video (optional)" folder="event-media" accept="video/mp4,video/webm,video/quicktime"

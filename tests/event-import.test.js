@@ -52,9 +52,19 @@ describe('buildDraft', () => {
             caption: 'Register: https://forms.gle/AbC123.',
         });
         expect(d).toMatchObject({ name: 'Hack the Hills 2.0', date: '2026-11-21T09:30', venue: 'CEK', category: 'Hackathon', registrationUrl: 'https://forms.gle/AbC123', timeGuessed: false });
-        expect(d.desc).toContain('Fee: ₹200');
-        expect(d.desc).toContain('Register by: 2026-11-15');
-        expect(d.desc).toContain('Contact: Anu 9876543210');
+        expect(d).toMatchObject({ fee: '200', registrationDeadline: '2026-11-15T23:59', contactName: 'Anu', contactPhone: '9876543210', mode: 'Offline' });
+        expect(d.desc).toBe('A 24 hour hackathon.');
+    });
+
+    it('keeps detailed fees in the description and reads new fields', () => {
+        const d = buildDraft({
+            ai: { name: 'X', date: '2026-11-21', endDate: '2026-11-22', fee: '₹100 (IEEE members ₹50)', mode: 'Hybrid', prize: '₹50,000', teamSize: '2-4', category: 'Tech Fest', contacts: [{ name: 'A', phone: '1' }, { name: 'B', phone: '2' }] },
+            caption: '',
+        });
+        expect(d).toMatchObject({ fee: '100', mode: 'Hybrid', prize: '₹50,000', teamSize: '2-4', category: 'Tech Fest', endDate: '2026-11-22T18:00' });
+        expect(d.desc).toContain('Fee: ₹100 (IEEE members ₹50)');
+        expect(d.desc).toContain('More contacts: B 2');
+        expect(buildDraft({ ai: { name: 'Y', fee: 'Free' }, caption: '' }).fee).toBe('0');
     });
 
     it('falls back to structured page data and rejects bad values', () => {

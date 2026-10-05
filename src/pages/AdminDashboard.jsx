@@ -33,6 +33,7 @@ import ContentManager from '../components/admin/ContentManager';
 // Modals
 import EventModal from '../components/admin/modals/EventModal';
 import ImportEventModal from '../components/admin/ImportEventModal';
+import { cleanEventFields } from '../utils/events';
 import VolunteerModal from '../components/admin/modals/VolunteerModal';
 import TaskModal from '../components/admin/modals/TaskModal';
 import TeamModal from '../components/admin/modals/TeamModal';
@@ -42,7 +43,12 @@ import RegistrationsModal from '../components/admin/modals/RegistrationsModal';
 import NotifyModal from '../components/admin/modals/NotifyModal';
 import CountdownModal from '../components/admin/modals/CountdownModal';
 
-const EMPTY_EVENT = { name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '', videoUrl: '', sourceUrl: '', linkMode: 'site', externalUrl: '' };
+const EMPTY_EVENT = {
+    name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '', videoUrl: '', sourceUrl: '', linkMode: 'site', externalUrl: '',
+    mode: 'Offline', endDate: '', registrationDeadline: '', fee: '', capacity: '', prize: '', teamSize: '', organizer: '', eligibility: '',
+    contactName: '', contactPhone: '', mapUrl: '', tags: [],
+};
+const EXTRA_FIELDS = ['mode', 'endDate', 'registrationDeadline', 'fee', 'capacity', 'prize', 'teamSize', 'organizer', 'eligibility', 'contactName', 'contactPhone', 'mapUrl', 'tags'];
 
 export default function AdminDashboard() {
     const addToast = useToast();
@@ -197,11 +203,11 @@ export default function AdminDashboard() {
         try {
             const imageUrl = await uploadImage();
             if (isEditing && currentEventId) {
-                await updateDoc(doc(db, "events", currentEventId), { ...newEvent, imageUrl });
+                await updateDoc(doc(db, "events", currentEventId), { ...cleanEventFields(newEvent), imageUrl });
                 addToast('Event updated successfully!', 'success');
             } else {
                 const eventCollege = currentUser?.college || currentUser?.branch || '';
-                await addDoc(collection(db, "events"), { ...newEvent, imageUrl, college: eventCollege, createdAt: new Date(), participants: 0, status: 'Active' });
+                await addDoc(collection(db, "events"), { ...cleanEventFields(newEvent), imageUrl, college: eventCollege, createdAt: new Date(), participants: 0, status: 'Active' });
                 addToast('Event created successfully!', 'success');
             }
             closeModal();
@@ -441,6 +447,7 @@ export default function AdminDashboard() {
             externalUrl: event.externalUrl || '',
             videoUrl: event.videoUrl || '',
             sourceUrl: event.sourceUrl || '',
+            ...Object.fromEntries(EXTRA_FIELDS.map(k => [k, event[k] ?? EMPTY_EVENT[k]])),
         });
         if (event.imageUrl) setImagePreview(event.imageUrl);
         setShowModal(true);
@@ -457,6 +464,7 @@ export default function AdminDashboard() {
             ...EMPTY_EVENT,
             name: draft.name, date: draft.date, venue: draft.venue, desc: draft.desc, category: draft.category,
             imageUrl: draft.imageUrl, videoUrl: draft.videoUrl, sourceUrl: draft.sourceUrl,
+            ...Object.fromEntries(EXTRA_FIELDS.filter(k => draft[k]).map(k => [k, draft[k]])),
             externalUrl: isSuperAdmin ? draft.registrationUrl : '',
         });
         setImagePreview(draft.imageUrl || null);

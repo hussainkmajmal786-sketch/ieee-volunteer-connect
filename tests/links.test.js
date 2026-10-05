@@ -47,3 +47,37 @@ describe("formatEventDate", () => {
         expect(formatEventDate(undefined)).toBe("");
     });
 });
+
+import { registrationState, closesAt, cleanEventFields, feeLabel, CATEGORY_NAMES } from "../src/utils/events.js";
+import { registrationClosedReason } from "../worker/functions.js";
+
+describe("event registration state", () => {
+    const now = new Date(2026, 11, 12, 9, 30).getTime(); // 12 Dec 2026, 9:30 local
+    it("open, closing, full and over", () => {
+        expect(registrationState({ date: "2026-12-20T10:00" }, now)).toMatchObject({ open: true, seatsLeft: null });
+        expect(registrationState({ date: "2026-12-20T10:00", registrationDeadline: "2026-12-12T09:00" }, now)).toMatchObject({ open: false, reason: "deadline" });
+        expect(registrationState({ date: "2026-12-20T10:00", registrationDeadline: "2026-12-12" }, now).open).toBe(true); // date-only = end of day
+        expect(registrationState({ date: "2026-12-20", capacity: 50, participants: 50 }, now)).toMatchObject({ open: false, reason: "full" });
+        expect(registrationState({ date: "2026-12-20", capacity: 50, participants: 42 }, now).seatsLeft).toBe(8);
+        expect(registrationState({ date: "2026-12-11T10:00" }, now)).toMatchObject({ open: false, reason: "ended" });
+        expect(registrationState({ date: "2026-12-11T10:00", endDate: "2026-12-13T18:00" }, now).open).toBe(true);
+        expect(registrationState({ date: "someday" }, now).open).toBe(true);
+    });
+    it("closing order uses the deadline, else the start", () => {
+        expect(closesAt({ date: "2026-12-20T10:00", registrationDeadline: "2026-12-15T17:00" })).toBe(new Date(2026, 11, 15, 17, 0).getTime());
+        expect(closesAt({ date: "2026-12-20T10:00" })).toBe(new Date(2026, 11, 20, 10, 0).getTime());
+    });
+    it("server agrees (India time)", () => {
+        const istNow = Date.UTC(2026, 11, 12, 4, 0); // 9:30 IST
+        expect(registrationClosedReason({ date: "2026-12-20", registrationDeadline: "2026-12-12T09:00" }, istNow)).toMatch(/closed/);
+        expect(registrationClosedReason({ date: "2026-12-20", registrationDeadline: "2026-12-12T09:31" }, istNow)).toBeNull();
+        expect(registrationClosedReason({ date: "2026-12-20", capacity: 2, participants: 2 }, istNow)).toMatch(/seats/);
+        expect(registrationClosedReason({ date: "2026-12-11T10:00" }, istNow)).toMatch(/over/);
+    });
+    it("cleans form values", () => {
+        expect(cleanEventFields({ fee: "₹ 150", capacity: "", tags: "AI, python , AI,," })).toMatchObject({ fee: 150, capacity: null, tags: ["AI", "python"] });
+        expect(feeLabel(0)).toBe("Free");
+        expect(feeLabel(1500)).toBe("₹1,500");
+        expect(CATEGORY_NAMES).toEqual(expect.arrayContaining(["Hackathon", "Tech Fest", "Project Expo", "Conclave", "Cultural", "Sports", "Other"]));
+    });
+});

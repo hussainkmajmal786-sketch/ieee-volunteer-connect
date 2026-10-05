@@ -1,5 +1,5 @@
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn, ExternalLink, BookOpen } from "lucide-react";
+import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn, ExternalLink, BookOpen, Wifi, Trophy, UsersRound, Ticket, Hourglass, Building, UserCheck, Lock, Tag, Navigation } from "lucide-react";
 import ComboBox from "../components/ComboBox";
 import { useDirectory } from "../hooks/useDirectory";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -20,6 +20,7 @@ import { getShortLink, copyText } from "../utils/shortLink";
 import { youtubeId, safeUrl } from "../utils/links";
 import PosterImage from "../components/PosterImage";
 import { formatEventDate } from "../utils/format";
+import { registrationState, CLOSED_LABEL, feeLabel, categoryColor } from "../utils/events";
 
 // Countdown Timer Component
 function CountdownTimer({ targetDate }) {
@@ -126,6 +127,9 @@ export default function EventDetailPage() {
 
     // Events can send registrations to the main website (super admin's choice).
     const externalUrl = event?.linkMode === 'external' && /^https?:\/\//i.test(event?.externalUrl || '') ? event.externalUrl : null;
+    // Deadline / seats / event over — the server enforces the same rules.
+    const [pageOpenedAt] = useState(() => Date.now());
+    const regState = registrationState(event || {}, pageOpenedAt, Math.max(regCount, event?.participants || 0));
 
     // An ambassador link opened directly (/event/:id?ref=…): count it once the
     // event is known, or hand it to the tracked redirect for main-website events.
@@ -339,7 +343,7 @@ export default function EventDetailPage() {
                         {/* Banner Image */}
                         <div className="rounded-2xl overflow-hidden mb-6 border border-gray-100 dark:border-gray-800 shadow-lg">
                             {event.imageUrl ? (
-                                <PosterImage src={event.imageUrl} alt={`${event.name} poster`} natural zoomable className="w-full min-h-[16rem]" />
+                                <PosterImage src={event.imageUrl} alt={`${event.name} poster`} zoomable className="w-full" />
                             ) : (
                                 <div className="w-full h-64 sm:h-80 bg-gradient-to-br from-ieee-blue/20 via-cyan-500/10 to-purple-500/10 flex items-center justify-center">
                                     <Image className="w-16 h-16 text-ieee-blue/30" />
@@ -350,7 +354,7 @@ export default function EventDetailPage() {
                         {/* Event Info */}
                         <div className="flex flex-wrap items-center gap-3 mb-4">
                             <span className="px-3 py-1.5 bg-ieee-blue/10 text-ieee-blue dark:bg-cyan-900/30 dark:text-cyan-400 rounded-lg text-xs font-bold uppercase tracking-wider">
-                                {event.category || 'Event'}
+                                <span className={`inline-block w-2 h-2 rounded-sm mr-1.5 ${categoryColor(event.category)}`} aria-hidden="true" />{event.category || 'Event'}
                             </span>
                             <span className="px-3 py-1.5 bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1">
                                 <Users className="w-3 h-3" /> {regCount} Registered
@@ -381,6 +385,45 @@ export default function EventDetailPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* More details (only the ones the organiser filled in) */}
+                        {(() => {
+                            const mode = event.mode || 'Offline';
+                            const items = [
+                                event.endDate && { icon: Calendar, label: 'Ends', value: formatEventDate(event.endDate) },
+                                { icon: mode === 'Online' ? Wifi : MapPin, label: 'Mode', value: mode },
+                                { icon: Ticket, label: 'Fee', value: feeLabel(event.fee) },
+                                event.registrationDeadline && { icon: Hourglass, label: 'Registration closes', value: formatEventDate(event.registrationDeadline) },
+                                Number(event.capacity) > 0 && { icon: Users, label: 'Seats', value: regState.open ? `${regState.seatsLeft} of ${event.capacity} left` : `${event.capacity} (full)` },
+                                event.prize && { icon: Trophy, label: 'Prize pool', value: event.prize },
+                                event.teamSize && { icon: UsersRound, label: 'Team size', value: event.teamSize },
+                                event.organizer && { icon: Building, label: 'Organised by', value: event.organizer },
+                                event.eligibility && { icon: UserCheck, label: 'Who can join', value: event.eligibility },
+                                (event.contactName || event.contactPhone) && {
+                                    icon: Phone, label: 'Contact',
+                                    value: <>{event.contactName}{event.contactPhone && <> · <a href={`tel:${event.contactPhone.replace(/[^\d+]/g, '')}`} className="text-ieee-blue hover:underline">{event.contactPhone}</a></>}</>,
+                                },
+                                safeUrl(event.mapUrl) && { icon: Navigation, label: 'Directions', value: <a href={safeUrl(event.mapUrl)} target="_blank" rel="noopener noreferrer" className="text-ieee-blue hover:underline">Open in Maps</a> },
+                            ].filter(Boolean);
+                            return (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
+                                    {items.map(it => (
+                                        <div key={it.label} className="flex items-start gap-2.5 p-3 rounded-xl border border-gray-100 dark:border-gray-800 min-w-0">
+                                            <it.icon className="w-4 h-4 mt-0.5 text-ieee-blue dark:text-cyan-400 shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{it.label}</p>
+                                                <p className="text-sm font-semibold text-gray-900 dark:text-white break-words">{it.value}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
+                        {Array.isArray(event.tags) && event.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mb-6">
+                                {event.tags.map(t => <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-300"><Tag className="w-3 h-3" />{t}</span>)}
+                            </div>
+                        )}
 
                         <EventParticipants eventId={id} refreshKey={`${event.participants || 0}-${registered}`} onCount={onParticipantCount} />
 
@@ -466,7 +509,18 @@ export default function EventDetailPage() {
                             </div>
 
                             <AnimatePresence mode="wait">
-                                {externalUrl ? (
+                                {!regState.open && !registered ? (
+                                    <motion.div key="closed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 text-center space-y-3">
+                                        <div className="w-14 h-14 mx-auto bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                                            <Lock className="w-7 h-7 text-gray-500" />
+                                        </div>
+                                        <p className="text-lg font-bold text-gray-900 dark:text-white">{CLOSED_LABEL[regState.reason]}</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            {regState.reason === 'full' ? 'All seats have been taken.' : regState.reason === 'deadline' ? 'Registrations for this event are no longer accepted.' : 'This event has already happened.'}
+                                        </p>
+                                        <Link to="/events" className="inline-block text-sm font-semibold text-ieee-blue hover:underline">See other events</Link>
+                                    </motion.div>
+                                ) : externalUrl ? (
                                     <motion.div key="external" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 text-center space-y-4">
                                         <div className="w-14 h-14 mx-auto bg-ieee-blue/10 rounded-full flex items-center justify-center">
                                             <ExternalLink className="w-7 h-7 text-ieee-blue" />
