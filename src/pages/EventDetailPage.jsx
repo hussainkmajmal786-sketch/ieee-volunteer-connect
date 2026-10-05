@@ -347,30 +347,6 @@ export default function EventDetailPage() {
                             )}
                         </div>
 
-                        {/* Promo video (uploaded, or YouTube) and the original post */}
-                        {(() => {
-                            const yt = youtubeId(event.videoUrl);
-                            const file = typeof event.videoUrl === "string" && event.videoUrl.startsWith("/files/") ? event.videoUrl : null;
-                            const other = !yt && !file ? safeUrl(event.videoUrl) : null;
-                            const post = safeUrl(event.sourceUrl);
-                            if (!yt && !file && !other && !post) return null;
-                            return (
-                                <div className="mb-6 space-y-3">
-                                    {yt && (
-                                        <div className="aspect-video rounded-2xl overflow-hidden bg-black">
-                                            <iframe src={`https://www.youtube-nocookie.com/embed/${yt}`} title={`${event.name} video`} className="w-full h-full" loading="lazy"
-                                                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                                        </div>
-                                    )}
-                                    {file && <video src={file} controls playsInline preload="metadata" poster={event.imageUrl || undefined} className="w-full max-h-[32rem] rounded-2xl bg-black" />}
-                                    <div className="flex flex-wrap gap-2">
-                                        {other && <a href={other} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-ieee-blue hover:text-ieee-blue">Watch the video <ExternalLink className="w-3.5 h-3.5" /></a>}
-                                        {post && <a href={post} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-ieee-blue hover:text-ieee-blue">View original post <ExternalLink className="w-3.5 h-3.5" /></a>}
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
                         {/* Event Info */}
                         <div className="flex flex-wrap items-center gap-3 mb-4">
                             <span className="px-3 py-1.5 bg-ieee-blue/10 text-ieee-blue dark:bg-cyan-900/30 dark:text-cyan-400 rounded-lg text-xs font-bold uppercase tracking-wider">
@@ -459,6 +435,30 @@ export default function EventDetailPage() {
                 <div className="lg:col-span-2">
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                         className="sticky top-24">
+                        {/* Promo video (uploaded, or YouTube) and the original post */}
+                        {(() => {
+                            const yt = youtubeId(event.videoUrl);
+                            const file = typeof event.videoUrl === "string" && event.videoUrl.startsWith("/files/") ? event.videoUrl : null;
+                            const other = !yt && !file ? safeUrl(event.videoUrl) : null;
+                            const post = safeUrl(event.sourceUrl);
+                            if (!yt && !file && !other && !post) return null;
+                            return (
+                                <div className="mb-4 space-y-3">
+                                    {yt && (
+                                        <div className="aspect-video rounded-2xl overflow-hidden bg-black">
+                                            <iframe src={`https://www.youtube-nocookie.com/embed/${yt}`} title={`${event.name} video`} className="w-full h-full" loading="lazy"
+                                                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                                        </div>
+                                    )}
+                                    {file && <video src={file} controls playsInline preload="metadata" poster={event.imageUrl || undefined} className="w-full max-h-[40vh] rounded-2xl bg-black" />}
+                                    <div className="flex flex-wrap gap-2">
+                                        {other && <a href={other} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-ieee-blue hover:text-ieee-blue">Watch the video <ExternalLink className="w-3.5 h-3.5" /></a>}
+                                        {post && <a href={post} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-ieee-blue hover:text-ieee-blue">View original post <ExternalLink className="w-3.5 h-3.5" /></a>}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
                         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-xl">
                             <div className="bg-gradient-to-r from-ieee-blue to-cyan-500 p-5 text-white">
                                 <h3 className="text-lg font-bold">Register for this Event</h3>
