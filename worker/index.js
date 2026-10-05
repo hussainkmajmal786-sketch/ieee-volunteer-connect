@@ -19,6 +19,7 @@ import { listPeople, getPerson, leaderboard, eventParticipants, uploadAvatar } f
 import { putFile, getFile } from './files.js';
 import { getShortLink, resolveShortLink } from './shortLinks.js';
 import { importEvent } from './eventImport.js';
+import { eventPreview, personPreview, previewResponse, pageMeta, PAGES } from './preview.js';
 import { subscribe as newsletterSubscribe, confirm as newsletterConfirm, unsubscribe as newsletterUnsubscribe } from './newsletter.js';
 import { getHook, updateHook, importRegistrations, receiveWebhook } from './externalRegistrations.js';
 
@@ -282,6 +283,14 @@ app.get('/s/:code', async (c) => {
     const auth = session?.user ? { uid: session.user.id } : null;
     return shortLink(c.env, c.req.raw, link.eventId, link.refId, auth);
 });
+
+// ─── Pages with link previews (WhatsApp, Instagram, LinkedIn, X…) ───
+// Same app page, with the preview tags filled in for that event / person / page.
+app.get('/event/:id', async (c) => (await eventPreview(c.env, originOf(c), c.req.param('id'))) || c.env.ASSETS.fetch(c.req.raw));
+app.get('/volunteers/:id', async (c) => (await personPreview(c.env, originOf(c), c.req.param('id'))) || c.env.ASSETS.fetch(c.req.raw));
+for (const path of Object.keys(PAGES)) {
+    app.get(path, async (c) => (await previewResponse(c.env, originOf(c), pageMeta(path, originOf(c)))) || c.env.ASSETS.fetch(c.req.raw));
+}
 
 app.all('/api/*', (c) => c.json({ error: { code: 'not-found', message: 'Not found' } }, 404));
 

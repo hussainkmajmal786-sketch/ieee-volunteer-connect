@@ -7,12 +7,17 @@
   "account_id": "7a852bedf2056637d90bd9534e6cd7c1",
 
   // The Vite build output; unknown paths fall back to index.html (SPA).
-  // /api/*, /files/*, /r/* and /s/* (ambassador links) always run the Worker.
+  // /api/*, /files/*, /r/* and /s/* (ambassador links) always run the Worker, as do
+  // the pages that need per-page link previews (see worker/preview.js).
   "assets": {
     "directory": "./build",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/files/*", "/r/*", "/s/*"]
+    "run_worker_first": [
+      "/api/*", "/files/*", "/r/*", "/s/*",
+      // pages whose link previews the Worker fills in
+      "/event/*", "/volunteers/*", "/", "/events", "/projects", "/leaderboard", "/volunteers", "/opportunities", "/chapters", "/resources", "/contact"
+    ]
   },
 
   "d1_databases": [
