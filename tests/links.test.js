@@ -81,3 +81,14 @@ describe("event registration state", () => {
         expect(CATEGORY_NAMES).toEqual(expect.arrayContaining(["Hackathon", "Tech Fest", "Project Expo", "Conclave", "Cultural", "Sports", "Other"]));
     });
 });
+
+import { whatsappLink } from "../src/utils/contact.js";
+
+describe("whatsappLink", () => {
+    it("builds wa.me links without exposing a tel: number", () => {
+        expect(whatsappLink()).toBe("https://wa.me/918848495055");
+        expect(whatsappLink("+91 98765 43210", "Hi there")).toBe("https://wa.me/919876543210?text=Hi%20there");
+        expect(whatsappLink("09876543210")).toBe("https://wa.me/919876543210");
+        expect(whatsappLink("12345")).toBeNull();
+    });
+});

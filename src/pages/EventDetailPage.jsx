@@ -1,5 +1,5 @@
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn, ExternalLink, BookOpen, Wifi, Trophy, UsersRound, Ticket, Hourglass, Building, UserCheck, Lock, Tag, Navigation } from "lucide-react";
+import { Calendar, MapPin, User, CheckCircle, Copy, Check, Share2, Image, Users, GraduationCap, Phone, Mail, Building2, ArrowLeft, Bell, Timer, LogIn, ExternalLink, BookOpen, Wifi, Trophy, UsersRound, Ticket, Hourglass, Building, UserCheck, Lock, Tag, Navigation, MessageCircle } from "lucide-react";
 import ComboBox from "../components/ComboBox";
 import { useDirectory } from "../hooks/useDirectory";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -20,6 +20,7 @@ import { getShortLink, copyText } from "../utils/shortLink";
 import { youtubeId, safeUrl } from "../utils/links";
 import PosterImage from "../components/PosterImage";
 import { formatEventDate } from "../utils/format";
+import { whatsappLink } from "../utils/contact";
 import { registrationState, CLOSED_LABEL, feeLabel, categoryColor } from "../utils/events";
 
 // Countdown Timer Component
@@ -400,8 +401,14 @@ export default function EventDetailPage() {
                                 event.organizer && { icon: Building, label: 'Organised by', value: event.organizer },
                                 event.eligibility && { icon: UserCheck, label: 'Who can join', value: event.eligibility },
                                 (event.contactName || event.contactPhone) && {
-                                    icon: Phone, label: 'Contact',
-                                    value: <>{event.contactName}{event.contactPhone && <> · <a href={`tel:${event.contactPhone.replace(/[^\d+]/g, '')}`} className="text-ieee-blue hover:underline">{event.contactPhone}</a></>}</>,
+                                    icon: MessageCircle, label: 'Contact',
+                                    // A WhatsApp chat button — the number itself isn't shown on the page.
+                                    value: <>{event.contactName}{whatsappLink(event.contactPhone) && (
+                                        <a href={whatsappLink(event.contactPhone, `Hi${event.contactName ? ` ${event.contactName}` : ''}, I have a question about ${event.name}.`)} target="_blank" rel="noopener noreferrer"
+                                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-bold ${event.contactName ? 'ml-1.5' : ''}`}>
+                                            <MessageCircle className="w-3 h-3" /> WhatsApp
+                                        </a>
+                                    )}</>,
                                 },
                                 safeUrl(event.mapUrl) && { icon: Navigation, label: 'Directions', value: <a href={safeUrl(event.mapUrl)} target="_blank" rel="noopener noreferrer" className="text-ieee-blue hover:underline">Open in Maps</a> },
                             ].filter(Boolean);
