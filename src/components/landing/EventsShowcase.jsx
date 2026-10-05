@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { Calendar, MapPin, Clock, Radio, ExternalLink, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { eventService } from "../../services/eventService";
-import OptimizedImage from "../../shared/OptimizedImage";
+import PosterImage from "../PosterImage";
 import { EventCardSkeleton } from "../../shared/Skeleton";
+import { formatEventDate } from "../../utils/format";
 
 function Countdown({ targetDate }) {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0 });
@@ -83,9 +84,9 @@ export default function EventsShowcase() {
                             <motion.div key={evt.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
                                 <Link to={`/event/${evt.id}`} className="group block">
                                     <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:border-ieee-blue/30 transition-all hover:shadow-xl">
-                                        <div className="relative h-48 overflow-hidden">
+                                        <div className="relative aspect-square overflow-hidden">
                                             {evt.imageUrl ? (
-                                                <OptimizedImage src={evt.imageUrl} alt={evt.name} containerClassName="h-48" className="w-full h-full object-cover group-hover:scale-110" />
+                                                <PosterImage src={evt.imageUrl} alt={evt.name} className="w-full h-full" hoverZoom />
                                             ) : (
                                                 <div className="w-full h-full bg-gradient-to-br from-ieee-blue/20 via-cyan-500/10 to-purple-500/10 flex items-center justify-center">
                                                     <Calendar className="w-12 h-12 text-ieee-blue/20" />
@@ -103,7 +104,7 @@ export default function EventsShowcase() {
                                         <div className="p-5">
                                             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-ieee-blue dark:group-hover:text-cyan-400 transition-colors line-clamp-1">{evt.name}</h3>
                                             <div className="flex flex-wrap gap-3 text-xs text-gray-500 mb-3">
-                                                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{evt.date}</span>
+                                                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatEventDate(evt.date)}</span>
                                                 {evt.venue && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{evt.venue}</span>}
                                             </div>
                                             <div className="flex items-center justify-between">

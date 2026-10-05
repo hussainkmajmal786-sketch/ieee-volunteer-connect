@@ -18,6 +18,8 @@ import EventParticipants from "../components/EventParticipants";
 import { rememberReferral, resolveReferral, buildReferralLink } from "../utils/referral";
 import { getShortLink, copyText } from "../utils/shortLink";
 import { youtubeId, safeUrl } from "../utils/links";
+import PosterImage from "../components/PosterImage";
+import { formatEventDate } from "../utils/format";
 
 // Countdown Timer Component
 function CountdownTimer({ targetDate }) {
@@ -291,7 +293,7 @@ export default function EventDetailPage() {
         <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
             <MetaTags 
                 title={event.name} 
-                description={event.desc || `Join us for ${event.name} at ${event.venue} on ${event.date}. Register now on IEEE Volunteer Connect.`}
+                description={event.desc || `Join us for ${event.name} at ${event.venue} on ${formatEventDate(event.date)}. Register now on IEEE Volunteer Connect.`}
                 image={event.imageUrl}
             />
             {/* Back link */}
@@ -337,11 +339,7 @@ export default function EventDetailPage() {
                         {/* Banner Image */}
                         <div className="rounded-2xl overflow-hidden mb-6 border border-gray-100 dark:border-gray-800 shadow-lg">
                             {event.imageUrl ? (
-                                // Posters are often portrait: show the whole poster over a blurred copy.
-                                <div className="relative w-full h-72 sm:h-[26rem] bg-gray-900 overflow-hidden">
-                                    <img src={event.imageUrl} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60" />
-                                    <img src={event.imageUrl} alt={`${event.name} poster`} className="relative w-full h-full object-contain" />
-                                </div>
+                                <PosterImage src={event.imageUrl} alt={`${event.name} poster`} natural zoomable className="w-full min-h-[16rem]" />
                             ) : (
                                 <div className="w-full h-64 sm:h-80 bg-gradient-to-br from-ieee-blue/20 via-cyan-500/10 to-purple-500/10 flex items-center justify-center">
                                     <Image className="w-16 h-16 text-ieee-blue/30" />
@@ -394,7 +392,7 @@ export default function EventDetailPage() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date</p>
-                                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{event.date}</p>
+                                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{formatEventDate(event.date)}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">

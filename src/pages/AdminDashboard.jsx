@@ -62,7 +62,7 @@ export default function AdminDashboard() {
     const [showImport, setShowImport] = useState(false);
     const [importInfo, setImportInfo] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
-    const [crop, setCrop] = useState({ unit: '%', width: 100, aspect: 16 / 9 });
+    const [crop, setCrop] = useState({ unit: '%', width: 100 });
     const [completedCrop, setCompletedCrop] = useState(null);
     const [imageRef, setImageRef] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -471,7 +471,7 @@ export default function AdminDashboard() {
         setImageFile(null); 
         setImagePreview(null); 
         setImportInfo(null);
-        setCrop({ unit: '%', width: 100, aspect: 16 / 9 });
+        setCrop({ unit: '%', width: 100 });
         setCompletedCrop(null); 
         setImageRef(null);
         setUploading(false); // Ensure spinner stops on close
