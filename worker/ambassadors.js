@@ -3,6 +3,7 @@
 import { DocError, getDocRow, writeDoc, autoId, applyUpdate } from './docstore.js';
 import { isSuperAdmin, isValidExternalUrl } from './rules.js';
 import { hookConfig } from './externalRegistrations.js';
+import { eventPreview } from './preview.js';
 import {
     requireString, optionalString, validateEmail, safeFieldKey,
     limitClicks, creditReferralVisit,
@@ -166,7 +167,7 @@ export async function reviewApplication(env, ctx, applicationId, status) {
 
 // ─── Tracked short links: /r/:eventId/:refId ────────────────
 
-const BOT_UA = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|discord|skype|embedly|linkedin/i;
+const BOT_UA = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|discord|skype|embedly|linkedin|instagram|pinterest/i;
 
 function readCookie(header, name) {
     const m = (header || '').match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
@@ -203,6 +204,14 @@ export async function shortLink(env, request, eventId, refId, auth) {
     const event = eventKey ? (await getDocRow(db, `events/${eventKey}`))?.data : null;
     if (!event) return Response.redirect(`${origin}/events`, 302);
 
+    // Link-preview crawlers get the event's preview (poster, name, date, venue) —
+    // never a redirect to another site — and aren't counted as clicks.
+    const ua = request.headers.get('User-Agent') || '';
+    if (BOT_UA.test(ua)) {
+        const preview = await eventPreview(env, origin, eventKey);
+        if (preview) return preview;
+    }
+
     const external = event.linkMode === 'external' && isValidExternalUrl(event.externalUrl);
     if (!external) {
         // The event page records the visit (and keeps the ref through sign-in).
@@ -211,7 +220,6 @@ export async function shortLink(env, request, eventId, refId, auth) {
 
     const refParam = (await hookConfig(db, eventKey))?.refParam;
     const headers = new Headers({ Location: withTracking(event.externalUrl, eventKey, refKey, refParam), 'Cache-Control': 'no-store' });
-    const ua = request.headers.get('User-Agent') || '';
     if (!BOT_UA.test(ua)) {
         let visitorId = readCookie(request.headers.get('Cookie'), '_vc_vid');
         if (!visitorId) {
