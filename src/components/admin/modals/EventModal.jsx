@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, Clock, MapPin, Link2, Globe, Home } from 'lucide-react';
-import ReactCrop from 'react-image-crop';
+import { X, Upload, Clock, MapPin, Link2, Globe, Home, Film, Wand2, AlertTriangle } from 'lucide-react';
+import MediaInput from '../MediaInput';
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import Button from '../../Button';
 
@@ -23,8 +24,34 @@ const EventModal = ({
   setImageRef,
   handleImageDrop,
   handleImageSelect,
-  uploading
+  uploading,
+  importInfo = null
 }) => {
+  // Posters keep their own shape unless the admin picks one to crop to.
+  const SHAPES = [
+    { key: 'original', label: 'Original', aspect: null },
+    { key: 'square', label: 'Square', aspect: 1 },
+    { key: 'portrait', label: 'Portrait 4:5', aspect: 4 / 5 },
+    { key: 'banner', label: 'Banner 16:9', aspect: 16 / 9 },
+  ];
+  // Remembered per file, so every newly chosen image starts as "Original".
+  const [shapeFor, setShapeFor] = useState({ file: null, key: 'original' });
+  const shape = shapeFor.file === imageFile ? shapeFor.key : 'original';
+  const setShape = (key) => setShapeFor({ file: imageFile, key });
+  const [imgEl, setImgEl] = useState(null);
+  const aspect = SHAPES.find(s => s.key === shape)?.aspect ?? null;
+
+  const applyShape = (key, el = imgEl) => {
+    setShape(key);
+    const a = SHAPES.find(s => s.key === key)?.aspect;
+    if (!a || !el) { setCompletedCrop(null); return; }
+    const w = el.width, h = el.height;
+    const pct = centerCrop(makeAspectCrop({ unit: '%', width: 100 }, a, w, h), w, h);
+    setCrop(pct);
+    // Applied on save even if the admin doesn't drag the box.
+    setCompletedCrop({ unit: 'px', x: (pct.x / 100) * w, y: (pct.y / 100) * h, width: (pct.width / 100) * w, height: (pct.height / 100) * h });
+  };
+  const FIELD = 'w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none';
   return (
     <AnimatePresence>
       {showModal && (
@@ -49,9 +76,37 @@ const EventModal = ({
               </button>
             </div>
             <form onSubmit={handleCreateOrUpdateEvent} className="p-6 space-y-4">
+              {importInfo && (
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm space-y-1.5" role="status">
+                  <p className="font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                    <Wand2 className="w-4 h-4" /> {importInfo.aiUsed ? 'Filled in from the post — please check every field.' : 'Filled in from the post text — please check every field.'}
+                  </p>
+                  {importInfo.warnings.map(w => (
+                    <p key={w} className="text-xs text-amber-700 dark:text-amber-400 flex gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {w}</p>
+                  ))}
+                  {importInfo.registrationUrl && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400 break-all">
+                      Registration link in the post: <a href={importInfo.registrationUrl} target="_blank" rel="noopener noreferrer" className="underline">{importInfo.registrationUrl}</a>.
+                      {' '}People will register on this site{isSuperAdmin ? ' unless you choose “Main website” below' : ''}.
+                    </p>
+                  )}
+                </div>
+              )}
               {/* Image Upload */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Event Banner Image</label>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Event Poster / Banner</label>
+                  {imageFile && (
+                    <div className="flex gap-1 p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg" role="radiogroup" aria-label="Poster shape">
+                      {SHAPES.map(s => (
+                        <button key={s.key} type="button" role="radio" aria-checked={shape === s.key} onClick={() => applyShape(s.key)}
+                          className={`px-2 py-1 rounded-md text-[11px] font-bold transition ${shape === s.key ? 'bg-white dark:bg-gray-700 text-ieee-blue shadow-sm' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={handleImageDrop}
@@ -59,30 +114,32 @@ const EventModal = ({
                 >
                   {imagePreview ? (
                     <div className="relative">
-                      {imageFile ? (
+                      {imageFile && aspect ? (
                         <ReactCrop
                           crop={crop}
                           onChange={(_, percentCrop) => setCrop(percentCrop)}
                           onComplete={(c) => setCompletedCrop(c)}
-                          aspect={16 / 9}
+                          aspect={aspect}
                           className="w-full bg-black rounded-xl overflow-hidden"
                         >
                           <img
                             src={imagePreview}
                             alt="Preview"
-                            onLoad={(e) => setImageRef(e.currentTarget)}
-                            className="w-full max-h-64 object-contain"
+                            onLoad={(e) => { setImageRef(e.currentTarget); setImgEl(e.currentTarget); applyShape(shape, e.currentTarget); }}
+                            className="w-full max-h-80 object-contain"
                           />
                         </ReactCrop>
                       ) : (
-                        <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-xl" />
+                        // The whole poster, exactly as it will be saved.
+                        <img src={imagePreview} alt="Preview" onLoad={(e) => { setImageRef(e.currentTarget); setImgEl(e.currentTarget); }}
+                          className="w-full max-h-80 object-contain bg-gray-900 rounded-xl" />
                       )}
                       <button
                         type="button"
                         onClick={() => {
                           setImageFile(null);
                           setImagePreview(null);
-                          setCrop({ unit: '%', width: 100, aspect: 16 / 9 });
+                          setCrop({ unit: '%', width: 100 });
                           setCompletedCrop(null);
                           setImageRef(null);
                         }}
@@ -159,11 +216,30 @@ const EventModal = ({
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
                 <textarea
                   placeholder="Describe the event..."
-                  rows={3}
+                  rows={importInfo ? 6 : 3}
                   value={newEvent.desc}
                   onChange={(e) => setNewEvent({ ...newEvent, desc: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none resize-none"
                 />
+              </div>
+              {/* Promo video: upload, or a YouTube / Instagram reel link */}
+              <div>
+                <MediaInput label="Promo video (optional)" folder="event-media" accept="video/mp4,video/webm,video/quicktime"
+                  value={newEvent.videoUrl?.startsWith('/files/') ? newEvent.videoUrl : ''}
+                  onChange={(url) => setNewEvent({ ...newEvent, videoUrl: url })}
+                  hint="MP4/WebM under 25MB — or paste a YouTube link below" />
+                <div className="relative -mt-2">
+                  <Film className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input type="url" aria-label="Video link" placeholder="https://youtu.be/…"
+                    value={newEvent.videoUrl?.startsWith('/files/') ? '' : (newEvent.videoUrl || '')}
+                    onChange={(e) => setNewEvent({ ...newEvent, videoUrl: e.target.value })}
+                    className={`${FIELD} pl-9 text-sm`} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Original post <span className="font-normal text-gray-400">(optional)</span></label>
+                <input type="url" placeholder="https://www.instagram.com/p/…" value={newEvent.sourceUrl || ''}
+                  onChange={(e) => setNewEvent({ ...newEvent, sourceUrl: e.target.value })} className={`${FIELD} text-sm`} />
               </div>
               {/* Where ambassador links send people — super admin only */}
               {isSuperAdmin && (

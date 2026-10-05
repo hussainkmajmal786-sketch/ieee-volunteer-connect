@@ -36,3 +36,14 @@ describe("college / department pickers", () => {
         expect(cleanList(DEPARTMENTS)).toContain("Computer Science and Engineering (CSE)");
     });
 });
+
+import { formatEventDate } from "../src/utils/format.js";
+
+describe("formatEventDate", () => {
+    it("formats stored event dates for people", () => {
+        expect(formatEventDate("2026-12-12T10:00")).toMatch(/^Sat, 12 Dec 2026 · 10:00 AM$/i);
+        expect(formatEventDate("2026-12-12")).toMatch(/^Sat, 12 Dec 2026$/);
+        expect(formatEventDate("Next Friday")).toBe("Next Friday");
+        expect(formatEventDate(undefined)).toBe("");
+    });
+});

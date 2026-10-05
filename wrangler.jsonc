@@ -30,6 +30,9 @@
     { "binding": "FILES_KV", "id": "7c000bf5c35d426f81e67af9ba2a543f" }
   ],
 
+  // Workers AI reads event details from posters / social media posts.
+  "ai": { "binding": "AI" },
+
   "vars": {
     // Public site URL (used for Google sign-in redirects and reset links).
     // Change it if you move to a custom domain.

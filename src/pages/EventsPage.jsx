@@ -6,6 +6,8 @@ import { db } from "../lib/backend";
 import { collection, query, orderBy, onSnapshot } from "../lib/firestore";
 import { useToast } from "../hooks/useToast";
 import MetaTags from "../shared/MetaTags";
+import PosterImage from "../components/PosterImage";
+import { formatEventDate } from "../utils/format";
 
 export default function EventsPage() {
     const addToast = useToast();
@@ -168,9 +170,9 @@ export default function EventsPage() {
                             <Link to={`/event/${event.id}`} className="group block h-full">
                                 <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 h-full flex flex-col hover:border-ieee-blue/30 hover:shadow-xl transition-all">
                                     {/* Image or Gradient Fallback */}
-                                    <div className="relative h-48 overflow-hidden">
+                                    <div className="relative aspect-square overflow-hidden">
                                         {event.imageUrl ? (
-                                            <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
+                                            <PosterImage src={event.imageUrl} alt={event.name} className="w-full h-full" hoverZoom />
                                         ) : (
                                             <div className="w-full h-full bg-gradient-to-br from-ieee-blue/20 via-cyan-500/10 to-purple-500/10 flex items-center justify-center">
                                                 <Image className="w-12 h-12 text-ieee-blue/20" />
@@ -198,7 +200,7 @@ export default function EventsPage() {
 
                                         <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-600 dark:text-gray-400 font-medium">
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-ieee-blue" />{event.date}</div>
+                                                <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-ieee-blue" />{formatEventDate(event.date)}</div>
                                                 <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-md text-xs"><Users className="w-3.5 h-3.5 text-ieee-blue" />{event.participants || 0} RSVPs</div>
                                             </div>
                                             <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-ieee-blue" />{event.venue}</div>

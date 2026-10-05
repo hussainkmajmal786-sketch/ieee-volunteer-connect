@@ -17,6 +17,9 @@ import { trackingService } from "../services/trackingService";
 import EventParticipants from "../components/EventParticipants";
 import { rememberReferral, resolveReferral, buildReferralLink } from "../utils/referral";
 import { getShortLink, copyText } from "../utils/shortLink";
+import { youtubeId, safeUrl } from "../utils/links";
+import PosterImage from "../components/PosterImage";
+import { formatEventDate } from "../utils/format";
 
 // Countdown Timer Component
 function CountdownTimer({ targetDate }) {
@@ -290,7 +293,7 @@ export default function EventDetailPage() {
         <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
             <MetaTags 
                 title={event.name} 
-                description={event.desc || `Join us for ${event.name} at ${event.venue} on ${event.date}. Register now on IEEE Volunteer Connect.`}
+                description={event.desc || `Join us for ${event.name} at ${event.venue} on ${formatEventDate(event.date)}. Register now on IEEE Volunteer Connect.`}
                 image={event.imageUrl}
             />
             {/* Back link */}
@@ -336,13 +339,37 @@ export default function EventDetailPage() {
                         {/* Banner Image */}
                         <div className="rounded-2xl overflow-hidden mb-6 border border-gray-100 dark:border-gray-800 shadow-lg">
                             {event.imageUrl ? (
-                                <img src={event.imageUrl} alt={event.name} className="w-full h-64 sm:h-80 object-cover" />
+                                <PosterImage src={event.imageUrl} alt={`${event.name} poster`} natural zoomable className="w-full min-h-[16rem]" />
                             ) : (
                                 <div className="w-full h-64 sm:h-80 bg-gradient-to-br from-ieee-blue/20 via-cyan-500/10 to-purple-500/10 flex items-center justify-center">
                                     <Image className="w-16 h-16 text-ieee-blue/30" />
                                 </div>
                             )}
                         </div>
+
+                        {/* Promo video (uploaded, or YouTube) and the original post */}
+                        {(() => {
+                            const yt = youtubeId(event.videoUrl);
+                            const file = typeof event.videoUrl === "string" && event.videoUrl.startsWith("/files/") ? event.videoUrl : null;
+                            const other = !yt && !file ? safeUrl(event.videoUrl) : null;
+                            const post = safeUrl(event.sourceUrl);
+                            if (!yt && !file && !other && !post) return null;
+                            return (
+                                <div className="mb-6 space-y-3">
+                                    {yt && (
+                                        <div className="aspect-video rounded-2xl overflow-hidden bg-black">
+                                            <iframe src={`https://www.youtube-nocookie.com/embed/${yt}`} title={`${event.name} video`} className="w-full h-full" loading="lazy"
+                                                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                                        </div>
+                                    )}
+                                    {file && <video src={file} controls playsInline preload="metadata" poster={event.imageUrl || undefined} className="w-full max-h-[32rem] rounded-2xl bg-black" />}
+                                    <div className="flex flex-wrap gap-2">
+                                        {other && <a href={other} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-ieee-blue hover:text-ieee-blue">Watch the video <ExternalLink className="w-3.5 h-3.5" /></a>}
+                                        {post && <a href={post} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-ieee-blue hover:text-ieee-blue">View original post <ExternalLink className="w-3.5 h-3.5" /></a>}
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* Event Info */}
                         <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -365,7 +392,7 @@ export default function EventDetailPage() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date</p>
-                                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{event.date}</p>
+                                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{formatEventDate(event.date)}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">

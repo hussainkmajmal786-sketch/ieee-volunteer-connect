@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { PlusCircle, UserPlus, BarChart2, Activity, Calendar, Users, Shield, Building2 } from "lucide-react";
+import { PlusCircle, Wand2, UserPlus, BarChart2, Activity, Calendar, Users, Shield, Building2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "../components/Button";
 import { useToast } from "../hooks/useToast";
@@ -32,6 +32,7 @@ import ContentManager from '../components/admin/ContentManager';
 
 // Modals
 import EventModal from '../components/admin/modals/EventModal';
+import ImportEventModal from '../components/admin/ImportEventModal';
 import VolunteerModal from '../components/admin/modals/VolunteerModal';
 import TaskModal from '../components/admin/modals/TaskModal';
 import TeamModal from '../components/admin/modals/TeamModal';
@@ -40,6 +41,8 @@ import GiveRewardModal from '../components/admin/modals/GiveRewardModal';
 import RegistrationsModal from '../components/admin/modals/RegistrationsModal';
 import NotifyModal from '../components/admin/modals/NotifyModal';
 import CountdownModal from '../components/admin/modals/CountdownModal';
+
+const EMPTY_EVENT = { name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '', videoUrl: '', sourceUrl: '', linkMode: 'site', externalUrl: '' };
 
 export default function AdminDashboard() {
     const addToast = useToast();
@@ -52,12 +55,14 @@ export default function AdminDashboard() {
     const [showRegistrationsModal, setShowRegistrationsModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentEventId, setCurrentEventId] = useState(null);
-    const [newEvent, setNewEvent] = useState({ name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '', linkMode: 'site', externalUrl: '' });
+    const [newEvent, setNewEvent] = useState({ ...EMPTY_EVENT });
     const [newVolunteer, setNewVolunteer] = useState({ name: '', email: '', password: '', branch: 'IEEE Student Branch', college: '' });
     const [creationError, setCreationError] = useState('');
     const [imageFile, setImageFile] = useState(null);
+    const [showImport, setShowImport] = useState(false);
+    const [importInfo, setImportInfo] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
-    const [crop, setCrop] = useState({ unit: '%', width: 100, aspect: 16 / 9 });
+    const [crop, setCrop] = useState({ unit: '%', width: 100 });
     const [completedCrop, setCompletedCrop] = useState(null);
     const [imageRef, setImageRef] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -433,19 +438,40 @@ export default function AdminDashboard() {
             category: event.category || 'Workshop', 
             imageUrl: event.imageUrl || '',
             linkMode: event.linkMode || 'site',
-            externalUrl: event.externalUrl || ''
+            externalUrl: event.externalUrl || '',
+            videoUrl: event.videoUrl || '',
+            sourceUrl: event.sourceUrl || '',
         });
         if (event.imageUrl) setImagePreview(event.imageUrl);
+        setShowModal(true);
+    };
+
+    // A draft read from a social media post / poster opens in the normal form for review.
+    // Registration stays on this site; the post's own form link is only pre-filled
+    // for the super admin (who alone may switch the event to the main website).
+    const openImportedEvent = ({ draft, warnings, aiUsed }) => {
+        setShowImport(false);
+        setIsEditing(false);
+        setImageFile(null);
+        setNewEvent({
+            ...EMPTY_EVENT,
+            name: draft.name, date: draft.date, venue: draft.venue, desc: draft.desc, category: draft.category,
+            imageUrl: draft.imageUrl, videoUrl: draft.videoUrl, sourceUrl: draft.sourceUrl,
+            externalUrl: isSuperAdmin ? draft.registrationUrl : '',
+        });
+        setImagePreview(draft.imageUrl || null);
+        setImportInfo({ warnings, aiUsed, registrationUrl: draft.registrationUrl });
         setShowModal(true);
     };
 
     const closeModal = () => {
         setShowModal(false);
         setIsEditing(false);
-        setNewEvent({ name: '', date: '', venue: '', desc: '', category: 'Workshop', imageUrl: '', linkMode: 'site', externalUrl: '' });
+        setNewEvent({ ...EMPTY_EVENT });
         setImageFile(null); 
         setImagePreview(null); 
-        setCrop({ unit: '%', width: 100, aspect: 16 / 9 });
+        setImportInfo(null);
+        setCrop({ unit: '%', width: 100 });
         setCompletedCrop(null); 
         setImageRef(null);
         setUploading(false); // Ensure spinner stops on close
@@ -604,6 +630,9 @@ export default function AdminDashboard() {
                         <Button onClick={() => setShowVolunteerModal(true)} variant="outline" className="flex items-center gap-2 btn-outline">
                             <UserPlus className="w-4 h-4" /> Add Volunteer
                         </Button>
+                        <Button onClick={() => setShowImport(true)} variant="outline" className="flex items-center gap-2 btn-outline">
+                            <Wand2 className="w-4 h-4" /> Import from Post
+                        </Button>
                         <Button onClick={() => setShowModal(true)} className="flex items-center gap-2 shadow-lg hover:shadow-xl btn-primary">
                             <PlusCircle className="w-5 h-5" /> Create Event
                         </Button>
@@ -741,7 +770,9 @@ export default function AdminDashboard() {
                 handleImageDrop={handleImageDrop}
                 handleImageSelect={handleImageSelect}
                 uploading={uploading}
+                importInfo={importInfo}
             />
+            <ImportEventModal open={showImport} onClose={() => setShowImport(false)} onExtracted={openImportedEvent} />
             <VolunteerModal
                 showVolunteerModal={showVolunteerModal}
                 closeVolunteerModal={closeVolunteerModal}
