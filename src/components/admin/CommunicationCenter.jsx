@@ -80,7 +80,8 @@ export default function CommunicationCenter({ users = [], events = [] }) {
     const [roster, setRoster] = useState(null);
     const [channel, setChannel] = useState("email");
     const [msg, setMsg] = useState({ subject: "", message: "" });
-    const [progress, setProgress] = useState(null);   // { done, total, sent, failed, error }
+    const [progress, setProgress] = useState(null);
+    const [test, setTest] = useState(null); // null | 'sending' | result   // { done, total, sent, failed, error }
     const [history, setHistory] = useState([]);
 
     useEffect(() => {
@@ -101,6 +102,12 @@ export default function CommunicationCenter({ users = [], events = [] }) {
     const reachable = roster ? roster.participants.filter(p => (channel === "email" ? p.email : p.phone)) : [];
     const channelReady = roster?.channels?.[channel];
     const sending = progress && progress.done < progress.total;
+
+    const runTest = async () => {
+        setTest("sending");
+        try { setTest(await api("/api/admin/email-test", {})); }
+        catch (err) { setTest({ ok: false, error: err.message, hint: "" }); }
+    };
 
     const send = async (e) => {
         e.preventDefault();
@@ -226,6 +233,24 @@ export default function CommunicationCenter({ users = [], events = [] }) {
                             {channel === "sms" && <>Same text to everyone · keep it under 160 characters for 1 SMS ({msg.message.length}/160). Fast2SMS charges per SMS.</>}
                             {channel === "whatsapp" && <>Sent with your approved template as &quot;Hi &lt;name&gt;, &lt;your message&gt;&quot;. Meta charges per message.</>}
                         </p>
+                        {channel === "email" && (
+                            <div>
+                                <button type="button" onClick={runTest} disabled={test === "sending"} className="text-xs font-bold text-ieee-blue hover:underline disabled:opacity-60">
+                                    {test === "sending" ? "Sending test…" : "Send a test email to me"}
+                                </button>
+                                {test && test !== "sending" && (
+                                    <div role="status" className={`mt-2 rounded-xl p-3 text-xs ${test.ok ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400" : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"}`}>
+                                        {test.ok ? <>Test email sent to <b>{test.to}</b> from <b>{test.sender}</b>. Check the inbox (and spam).</> : (
+                                            <>
+                                                <b>Email isn&apos;t working{test.sender ? ` from ${test.sender}` : ""}.</b>
+                                                {test.hint && <span className="block mt-1">{test.hint}</span>}
+                                                {test.error && <code className="block mt-1.5 break-all opacity-80">{test.error}</code>}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {channel === "email" && msg.message && (
                             <div className="text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 whitespace-pre-line max-h-28 overflow-y-auto"><b>Preview:</b> {preview}</div>
                         )}
