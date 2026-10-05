@@ -5,7 +5,7 @@ import { DocError, writeDoc, autoId, applyUpdate } from './docstore.js';
 import { isSuperAdmin } from './rules.js';
 import { requireString, optionalString, safeFieldKey } from './functions.js';
 import { listSubscribers, subscribersOnly } from './newsletter.js';
-import { sendViaBrevo, senderPool } from './senders.js';
+import { sendViaBrevo, senderPool, explainBrevoError } from './senders.js';
 
 export const NEWSLETTER_AUDIENCE = '__newsletter__';
 
@@ -196,4 +196,22 @@ export async function sendBatch(env, ctx, body, origin = '') {
             sent: result.sent, failed: result.failed, skipped, sentBy: ctx.auth.uid, createdAt: { __ts: Date.now() },
         });
     return { logId, ...result, skipped };
+}
+
+/** Super admin: send a test email to find out why email isn't working. */
+export async function testEmail(env, ctx, to) {
+    await requireSuperAdmin(ctx);
+    const address = EMAIL_RE.test(String(to || '')) ? String(to).trim() : ctx.auth.email;
+    const [sender] = senderPool(env);
+    try {
+        await sendViaBrevo(env, {
+            to: [{ email: address }],
+            subject: 'Test email from IEEE Volunteer Connect',
+            htmlContent: '<p>If you can read this, email sending works. 🎉</p>',
+        });
+        return { ok: true, to: address, sender };
+    } catch (err) {
+        console.error('email test failed', err);
+        return { ok: false, to: address, sender: sender || null, error: err.message, hint: explainBrevoError(err.message, sender) };
+    }
 }

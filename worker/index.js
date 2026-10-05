@@ -14,7 +14,7 @@ import {
 import { registerForEvent, recordLinkClick } from './functions.js';
 import { applyClassAmbassador, reviewApplication, notifyAmbassadors, shortLink } from './ambassadors.js';
 import { createShare, listShares, downloadShare, deleteShare } from './sharedFiles.js';
-import { listParticipants, sendBatch } from './messaging.js';
+import { listParticipants, sendBatch, testEmail } from './messaging.js';
 import { listPeople, getPerson, leaderboard, eventParticipants, uploadAvatar } from './people.js';
 import { putFile, getFile } from './files.js';
 import { getShortLink, resolveShortLink } from './shortLinks.js';
@@ -201,6 +201,7 @@ app.delete('/api/shared-files/:id', async (c) => c.json(await deleteShare(c.env,
 // ─── Messages to registered participants (super admin) ────────
 
 app.get('/api/admin/participants', async (c) => c.json(await listParticipants(c.env, c.get('ctx'), c.req.query('eventId') || null)));
+app.post('/api/admin/email-test', async (c) => c.json(await testEmail(c.env, c.get('ctx'), (await c.req.json().catch(() => ({}))).to)));
 app.post('/api/admin/broadcast', async (c) => c.json(await sendBatch(c.env, c.get('ctx'), await c.req.json(), originOf(c))));
 
 // ─── Registrations on the main website ───────────────────────
