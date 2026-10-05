@@ -244,10 +244,12 @@ export const UPLOAD_RULES = {
     projects: { types: IMAGE_TYPES, max: 5 * MB },
     'project-docs': { types: ['application/pdf'], max: 15 * MB },
     about: { types: [...IMAGE_TYPES, 'video/mp4', 'video/webm'], max: 25 * MB },
+    'event-media': { types: ['video/mp4', 'video/webm', 'video/quicktime'], max: 25 * MB },
 };
 export const UPLOAD_FOLDERS = Object.keys(UPLOAD_RULES);
 export const UPLOAD_TYPES = IMAGE_TYPES;
 export const MAX_UPLOAD_BYTES = 5 * MB;
+export { IMAGE_TYPES, MB };
 const UPLOAD_ROLES = ['admin', 'organizer', 'ADMIN', 'SUPER_ADMIN'];
 
 /** Returns null when allowed, otherwise the reason the upload is refused. */

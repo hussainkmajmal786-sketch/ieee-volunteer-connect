@@ -18,6 +18,7 @@ import { listParticipants, sendBatch } from './messaging.js';
 import { listPeople, getPerson, leaderboard, eventParticipants, uploadAvatar } from './people.js';
 import { putFile, getFile } from './files.js';
 import { getShortLink, resolveShortLink } from './shortLinks.js';
+import { importEvent } from './eventImport.js';
 import { getHook, updateHook, importRegistrations, receiveWebhook } from './externalRegistrations.js';
 
 const STATUS = {
@@ -222,6 +223,9 @@ app.post('/api/hooks/registrations/:eventId', async (c) => {
     const key = c.req.header('X-Webhook-Key') || c.req.query('key') || '';
     return c.json(await receiveWebhook(c.env, c.req.param('eventId'), key, body));
 });
+
+// Admin: read an event from a social media post / poster (returns a draft, saves nothing).
+app.post('/api/admin/event-import', async (c) => c.json(await importEvent(c.env, c.get('ctx'), await c.req.formData())));
 
 app.post('/api/upload', async (c) => {
     const ctx = c.get('ctx');

@@ -17,6 +17,7 @@ import { trackingService } from "../services/trackingService";
 import EventParticipants from "../components/EventParticipants";
 import { rememberReferral, resolveReferral, buildReferralLink } from "../utils/referral";
 import { getShortLink, copyText } from "../utils/shortLink";
+import { youtubeId, safeUrl } from "../utils/links";
 
 // Countdown Timer Component
 function CountdownTimer({ targetDate }) {
@@ -336,13 +337,41 @@ export default function EventDetailPage() {
                         {/* Banner Image */}
                         <div className="rounded-2xl overflow-hidden mb-6 border border-gray-100 dark:border-gray-800 shadow-lg">
                             {event.imageUrl ? (
-                                <img src={event.imageUrl} alt={event.name} className="w-full h-64 sm:h-80 object-cover" />
+                                // Posters are often portrait: show the whole poster over a blurred copy.
+                                <div className="relative w-full h-72 sm:h-[26rem] bg-gray-900 overflow-hidden">
+                                    <img src={event.imageUrl} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60" />
+                                    <img src={event.imageUrl} alt={`${event.name} poster`} className="relative w-full h-full object-contain" />
+                                </div>
                             ) : (
                                 <div className="w-full h-64 sm:h-80 bg-gradient-to-br from-ieee-blue/20 via-cyan-500/10 to-purple-500/10 flex items-center justify-center">
                                     <Image className="w-16 h-16 text-ieee-blue/30" />
                                 </div>
                             )}
                         </div>
+
+                        {/* Promo video (uploaded, or YouTube) and the original post */}
+                        {(() => {
+                            const yt = youtubeId(event.videoUrl);
+                            const file = typeof event.videoUrl === "string" && event.videoUrl.startsWith("/files/") ? event.videoUrl : null;
+                            const other = !yt && !file ? safeUrl(event.videoUrl) : null;
+                            const post = safeUrl(event.sourceUrl);
+                            if (!yt && !file && !other && !post) return null;
+                            return (
+                                <div className="mb-6 space-y-3">
+                                    {yt && (
+                                        <div className="aspect-video rounded-2xl overflow-hidden bg-black">
+                                            <iframe src={`https://www.youtube-nocookie.com/embed/${yt}`} title={`${event.name} video`} className="w-full h-full" loading="lazy"
+                                                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                                        </div>
+                                    )}
+                                    {file && <video src={file} controls playsInline preload="metadata" poster={event.imageUrl || undefined} className="w-full max-h-[32rem] rounded-2xl bg-black" />}
+                                    <div className="flex flex-wrap gap-2">
+                                        {other && <a href={other} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-ieee-blue hover:text-ieee-blue">Watch the video <ExternalLink className="w-3.5 h-3.5" /></a>}
+                                        {post && <a href={post} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-ieee-blue hover:text-ieee-blue">View original post <ExternalLink className="w-3.5 h-3.5" /></a>}
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* Event Info */}
                         <div className="flex flex-wrap items-center gap-3 mb-4">

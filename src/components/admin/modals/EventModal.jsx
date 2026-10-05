@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, Clock, MapPin, Link2, Globe, Home } from 'lucide-react';
+import { X, Upload, Clock, MapPin, Link2, Globe, Home, Film, Wand2, AlertTriangle } from 'lucide-react';
+import MediaInput from '../MediaInput';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import Button from '../../Button';
@@ -23,8 +24,10 @@ const EventModal = ({
   setImageRef,
   handleImageDrop,
   handleImageSelect,
-  uploading
+  uploading,
+  importInfo = null
 }) => {
+  const FIELD = 'w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none';
   return (
     <AnimatePresence>
       {showModal && (
@@ -49,6 +52,22 @@ const EventModal = ({
               </button>
             </div>
             <form onSubmit={handleCreateOrUpdateEvent} className="p-6 space-y-4">
+              {importInfo && (
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm space-y-1.5" role="status">
+                  <p className="font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                    <Wand2 className="w-4 h-4" /> {importInfo.aiUsed ? 'Filled in from the post — please check every field.' : 'Filled in from the post text — please check every field.'}
+                  </p>
+                  {importInfo.warnings.map(w => (
+                    <p key={w} className="text-xs text-amber-700 dark:text-amber-400 flex gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {w}</p>
+                  ))}
+                  {importInfo.registrationUrl && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400 break-all">
+                      Registration link in the post: <a href={importInfo.registrationUrl} target="_blank" rel="noopener noreferrer" className="underline">{importInfo.registrationUrl}</a>.
+                      {' '}People will register on this site{isSuperAdmin ? ' unless you choose “Main website” below' : ''}.
+                    </p>
+                  )}
+                </div>
+              )}
               {/* Image Upload */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Event Banner Image</label>
@@ -159,11 +178,30 @@ const EventModal = ({
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
                 <textarea
                   placeholder="Describe the event..."
-                  rows={3}
+                  rows={importInfo ? 6 : 3}
                   value={newEvent.desc}
                   onChange={(e) => setNewEvent({ ...newEvent, desc: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue outline-none resize-none"
                 />
+              </div>
+              {/* Promo video: upload, or a YouTube / Instagram reel link */}
+              <div>
+                <MediaInput label="Promo video (optional)" folder="event-media" accept="video/mp4,video/webm,video/quicktime"
+                  value={newEvent.videoUrl?.startsWith('/files/') ? newEvent.videoUrl : ''}
+                  onChange={(url) => setNewEvent({ ...newEvent, videoUrl: url })}
+                  hint="MP4/WebM under 25MB — or paste a YouTube link below" />
+                <div className="relative -mt-2">
+                  <Film className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input type="url" aria-label="Video link" placeholder="https://youtu.be/…"
+                    value={newEvent.videoUrl?.startsWith('/files/') ? '' : (newEvent.videoUrl || '')}
+                    onChange={(e) => setNewEvent({ ...newEvent, videoUrl: e.target.value })}
+                    className={`${FIELD} pl-9 text-sm`} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Original post <span className="font-normal text-gray-400">(optional)</span></label>
+                <input type="url" placeholder="https://www.instagram.com/p/…" value={newEvent.sourceUrl || ''}
+                  onChange={(e) => setNewEvent({ ...newEvent, sourceUrl: e.target.value })} className={`${FIELD} text-sm`} />
               </div>
               {/* Where ambassador links send people — super admin only */}
               {isSuperAdmin && (
