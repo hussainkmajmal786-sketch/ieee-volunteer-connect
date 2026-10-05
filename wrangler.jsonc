@@ -46,8 +46,6 @@
   //   FIREBASE_API_KEY      lets migrated users sign in with their old password
   //   BREVO_API_KEY         email (participant messages + "Forgot password"); also set
   //   BREVO_SENDER_EMAIL    the verified sender address (e.g. your Gmail)
-  //   BREVO_SENDER_EMAILS   optional: comma-separated senders to alternate between (each verified in Brevo)
-  //   BREVO_REPLY_TO        optional: where replies go (default ajmal_b25219ec_a@ce-kgr.org)
   //   FAST2SMS_API_KEY      SMS to participants (Fast2SMS Quick SMS route)
   //   WHATSAPP_TOKEN        WhatsApp Cloud API permanent token
   //   WHATSAPP_PHONE_NUMBER_ID

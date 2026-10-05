@@ -223,9 +223,6 @@ export default function CommunicationCenter({ users = [], events = [] }) {
                             maxLength={channel === "email" ? 10000 : 1000} required />
                         <p className="text-[11px] text-gray-500">
                             {channel === "email" && <>Write <code>{"{{name}}"}</code> to insert each person&apos;s name. Free Brevo plan: 300 emails/day.</>}
-                            {channel === "email" && roster?.channels?.senders?.length > 0 && (
-                                <span className="block mt-1">Sends alternate between <b>{roster.channels.senders.join(" and ")}</b>; replies go to <b>{roster.channels.replyTo}</b>.</span>
-                            )}
                             {channel === "sms" && <>Same text to everyone · keep it under 160 characters for 1 SMS ({msg.message.length}/160). Fast2SMS charges per SMS.</>}
                             {channel === "whatsapp" && <>Sent with your approved template as &quot;Hi &lt;name&gt;, &lt;your message&gt;&quot;. Meta charges per message.</>}
                         </p>

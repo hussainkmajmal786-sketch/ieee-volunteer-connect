@@ -5,7 +5,7 @@ import { DocError, writeDoc, autoId, applyUpdate } from './docstore.js';
 import { isSuperAdmin } from './rules.js';
 import { requireString, optionalString, safeFieldKey } from './functions.js';
 import { listSubscribers, subscribersOnly } from './newsletter.js';
-import { sendViaBrevo, senderPool, replyToAddress } from './senders.js';
+import { sendViaBrevo, senderPool } from './senders.js';
 
 export const NEWSLETTER_AUDIENCE = '__newsletter__';
 
@@ -15,8 +15,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function channelStatus(env) {
     return {
         email: !!(env.BREVO_API_KEY && senderPool(env).length),
-        senders: senderPool(env),
-        replyTo: replyToAddress(env),
         sms: !!env.FAST2SMS_API_KEY,
         whatsapp: !!(env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID),
         emailLimitPerDay: 300,
