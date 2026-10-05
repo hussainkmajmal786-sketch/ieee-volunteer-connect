@@ -2,17 +2,26 @@ import { Link } from "react-router-dom";
 import { Github, Twitter, Linkedin, Mail, ArrowUpRight, Heart, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { CONTACT_EMAIL, whatsappLink } from "../utils/contact";
+import { api } from "../lib/api";
 
 export default function Footer() {
-    const [subscribed, setSubscribed] = useState(false);
+    // idle | sending | pending (confirmation email sent) | subscribed | already | error
+    const [state, setState] = useState({ status: "idle", message: "" });
     const [email, setEmail] = useState("");
+    const [trap, setTrap] = useState(""); // honeypot: real people never see or fill this
 
-    const handleNewsletter = (e) => {
+    const handleNewsletter = async (e) => {
         e.preventDefault();
-        setSubscribed(true);
-        setEmail("");
-        setTimeout(() => setSubscribed(false), 4000);
+        setState({ status: "sending", message: "" });
+        try {
+            const r = await api("/api/newsletter/subscribe", { email, website: trap });
+            setState({ status: r.status, message: "" });
+            setEmail("");
+        } catch (err) {
+            setState({ status: "error", message: err.message || "Something went wrong. Please try again." });
+        }
     };
+    const done = ["pending", "subscribed", "already"].includes(state.status);
 
     return (
         <footer className="relative overflow-hidden bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 mt-auto" role="contentinfo">
@@ -100,16 +109,23 @@ export default function Footer() {
                     <div>
                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Newsletter</h4>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Get updates on new events and features.</p>
-                        {subscribed ? (
-                            <div className="flex items-center gap-2 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-                                <span className="text-green-600 dark:text-green-400 text-sm font-semibold">✓ Thanks for subscribing!</span>
+                        {done ? (
+                            <div role="status" className="px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-sm text-green-700 dark:text-green-400">
+                                {state.status === "pending" && <><b>Almost done!</b> Check your inbox and tap the confirmation link to finish subscribing.</>}
+                                {state.status === "subscribed" && <><b>✓ You&apos;re subscribed.</b> Thanks for joining!</>}
+                                {state.status === "already" && <><b>✓ You&apos;re already subscribed.</b> Thanks for being with us!</>}
                             </div>
                         ) : (
-                            <form onSubmit={handleNewsletter} className="flex gap-2">
-                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@ieee.org" aria-label="Email for newsletter" className="flex-grow min-w-0 px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue/50 outline-none transition" required />
-                                <button type="submit" className="px-4 py-2.5 bg-ieee-blue text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition shrink-0 shadow-sm hover:shadow-md" aria-label="Subscribe">
-                                    <Mail className="w-4 h-4" />
-                                </button>
+                            <form onSubmit={handleNewsletter} className="space-y-2">
+                                <div className="flex gap-2">
+                                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@ieee.org" aria-label="Email for newsletter" autoComplete="email" className="flex-grow min-w-0 px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-ieee-blue/50 outline-none transition" required />
+                                    <button type="submit" disabled={state.status === "sending"} className="px-4 py-2.5 bg-ieee-blue text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition shrink-0 shadow-sm hover:shadow-md disabled:opacity-60" aria-label="Subscribe">
+                                        {state.status === "sending" ? <span className="block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Mail className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                                <input type="text" name="website" value={trap} onChange={(e) => setTrap(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] w-px h-px opacity-0" />
+                                {state.status === "error" && <p role="alert" className="text-xs text-red-500">{state.message}</p>}
+                                <p className="text-[11px] text-gray-400">No spam — unsubscribe any time.</p>
                             </form>
                         )}
                     </div>

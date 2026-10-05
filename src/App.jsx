@@ -22,6 +22,7 @@ const ChaptersPage = lazy(() => import("./pages/ChaptersPage"));
 const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ResourcesPage = lazy(() => import("./pages/ResourcesPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
+const NewsletterPage = lazy(() => import("./pages/NewsletterPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const ClassAmbassadorApplyPage = lazy(() => import("./pages/ClassAmbassadorApplyPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
@@ -103,6 +104,7 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="contact" element={<ContactPage />} />
+            <Route path="newsletter" element={<NewsletterPage />} />
 
             {/* Protected Routes */}
             <Route path="admin" element={

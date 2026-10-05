@@ -19,11 +19,12 @@ import { listPeople, getPerson, leaderboard, eventParticipants, uploadAvatar } f
 import { putFile, getFile } from './files.js';
 import { getShortLink, resolveShortLink } from './shortLinks.js';
 import { importEvent } from './eventImport.js';
+import { subscribe as newsletterSubscribe, confirm as newsletterConfirm, unsubscribe as newsletterUnsubscribe } from './newsletter.js';
 import { getHook, updateHook, importRegistrations, receiveWebhook } from './externalRegistrations.js';
 
 const STATUS = {
     'invalid-argument': 400, unauthenticated: 401, 'permission-denied': 403, 'not-found': 404,
-    'already-exists': 409, aborted: 409, 'resource-exhausted': 429, 'failed-precondition': 412,
+    'already-exists': 409, aborted: 409, 'resource-exhausted': 429, 'failed-precondition': 412, unavailable: 503,
 };
 const MAX_POLL_SUBS = 40;
 
@@ -200,7 +201,7 @@ app.delete('/api/shared-files/:id', async (c) => c.json(await deleteShare(c.env,
 // ─── Messages to registered participants (super admin) ────────
 
 app.get('/api/admin/participants', async (c) => c.json(await listParticipants(c.env, c.get('ctx'), c.req.query('eventId') || null)));
-app.post('/api/admin/broadcast', async (c) => c.json(await sendBatch(c.env, c.get('ctx'), await c.req.json())));
+app.post('/api/admin/broadcast', async (c) => c.json(await sendBatch(c.env, c.get('ctx'), await c.req.json(), originOf(c))));
 
 // ─── Registrations on the main website ───────────────────────
 
@@ -223,6 +224,18 @@ app.post('/api/hooks/registrations/:eventId', async (c) => {
     const key = c.req.header('X-Webhook-Key') || c.req.query('key') || '';
     return c.json(await receiveWebhook(c.env, c.req.param('eventId'), key, body));
 });
+
+// ─── Newsletter (public sign-up, double opt-in) ──────────────
+
+app.post('/api/newsletter/subscribe', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    return c.json(await newsletterSubscribe(c.env, body, c.req.header('CF-Connecting-IP'), originOf(c)));
+});
+app.get('/api/newsletter/confirm', async (c) => {
+    const status = await newsletterConfirm(c.env, c.req.query('id'), c.req.query('t'));
+    return c.redirect(`/newsletter?status=${status}`, 302);
+});
+app.post('/api/newsletter/unsubscribe', async (c) => c.json(await newsletterUnsubscribe(c.env, await c.req.json().catch(() => ({})))));
 
 // Admin: read an event from a social media post / poster (returns a draft, saves nothing).
 app.post('/api/admin/event-import', async (c) => c.json(await importEvent(c.env, c.get('ctx'), await c.req.formData())));

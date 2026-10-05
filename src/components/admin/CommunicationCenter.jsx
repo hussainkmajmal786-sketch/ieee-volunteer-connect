@@ -20,6 +20,7 @@ const SHARE_AUDIENCES = [
 ];
 const AUDIENCE_LABEL = Object.fromEntries(SHARE_AUDIENCES.map(a => [a.value, a.label]));
 
+const NEWSLETTER = "__newsletter__"; // matches NEWSLETTER_AUDIENCE on the server
 const CHANNELS = [
     { value: "email", label: "Email", icon: Mail, setup: "Add BREVO_API_KEY and BREVO_SENDER_EMAIL" },
     { value: "sms", label: "SMS", icon: MessageSquare, setup: "Add FAST2SMS_API_KEY" },
@@ -96,6 +97,7 @@ export default function CommunicationCenter({ users = [], events = [] }) {
         () => setHistory([])
     ), []);
 
+    const isNewsletter = eventId === NEWSLETTER;
     const reachable = roster ? roster.participants.filter(p => (channel === "email" ? p.email : p.phone)) : [];
     const channelReady = roster?.channels?.[channel];
     const sending = progress && progress.done < progress.total;
@@ -104,7 +106,7 @@ export default function CommunicationCenter({ users = [], events = [] }) {
         e.preventDefault();
         const label = CHANNELS.find(c => c.value === channel).label;
         if (!window.confirm(`Send this ${label} to ${reachable.length} participant${reachable.length === 1 ? "" : "s"}?`)) return;
-        const eventName = events.find(ev => ev.id === eventId)?.name || "All events";
+        const eventName = isNewsletter ? "Newsletter subscribers" : events.find(ev => ev.id === eventId)?.name || "All events";
         let logId = null;
         const state = { done: 0, total: reachable.length, sent: 0, failed: 0, error: null };
         setProgress({ ...state });
@@ -113,7 +115,8 @@ export default function CommunicationCenter({ users = [], events = [] }) {
             try {
                 const r = await api("/api/admin/broadcast", {
                     channel, subject: msg.subject, message: msg.message, recipients: batch,
-                    logId, eventId: eventId || null, eventName, total: reachable.length,
+                    audience: isNewsletter ? "newsletter" : undefined,
+                    logId, eventId: isNewsletter ? null : (eventId || null), eventName, total: reachable.length,
                 });
                 logId = r.logId;
                 state.sent += r.sent;
@@ -185,19 +188,22 @@ export default function CommunicationCenter({ users = [], events = [] }) {
                 <form onSubmit={send} className={CARD}>
                     <h3 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><Users className="w-4 h-4 text-ieee-blue" /> Message registered participants</h3>
                     <div className="space-y-3">
-                        <select className={INPUT} value={eventId} onChange={(e) => { setEventId(e.target.value); setProgress(null); }} aria-label="Participants of">
+                        <select className={INPUT} value={eventId} onChange={(e) => { setEventId(e.target.value); setProgress(null); if (e.target.value === NEWSLETTER) setChannel("email"); }} aria-label="Participants of">
                             <option value="">Everyone who registered for any event</option>
+                            <option value={NEWSLETTER}>📰 Newsletter subscribers</option>
                             {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
                         </select>
                         <p className="text-xs text-gray-500 tabular-nums">
-                            {roster ? `${roster.counts.total} people · ${roster.counts.withEmail} with email · ${roster.counts.withPhone} with mobile number` : "Loading participants…"}
+                            {roster ? (isNewsletter
+                                ? `${roster.counts.total} confirmed subscribers${roster.counts.pending ? ` · ${roster.counts.pending} waiting to confirm` : ""}${roster.counts.unsubscribed ? ` · ${roster.counts.unsubscribed} unsubscribed` : ""} · email only, with an unsubscribe link`
+                                : `${roster.counts.total} people · ${roster.counts.withEmail} with email · ${roster.counts.withPhone} with mobile number`) : "Loading participants…"}
                         </p>
                         <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Channel">
                             {CHANNELS.map(c => {
                                 const ready = roster?.channels?.[c.value];
                                 return (
-                                    <button type="button" key={c.value} role="radio" aria-checked={channel === c.value} onClick={() => { setChannel(c.value); setProgress(null); }}
-                                        className={`px-3 py-2 rounded-xl text-sm font-bold border flex items-center justify-center gap-1.5 transition ${channel === c.value ? "bg-ieee-blue text-white border-ieee-blue" : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"}`}>
+                                    <button type="button" key={c.value} role="radio" aria-checked={channel === c.value} disabled={isNewsletter && c.value !== "email"} onClick={() => { setChannel(c.value); setProgress(null); }}
+                                        className={`px-3 py-2 rounded-xl text-sm font-bold border flex items-center justify-center gap-1.5 transition disabled:opacity-40 ${channel === c.value ? "bg-ieee-blue text-white border-ieee-blue" : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"}`}>
                                         <c.icon className="w-4 h-4" /> {c.label}
                                         {!ready && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" aria-label="not set up" />}
                                     </button>
@@ -217,6 +223,9 @@ export default function CommunicationCenter({ users = [], events = [] }) {
                             maxLength={channel === "email" ? 10000 : 1000} required />
                         <p className="text-[11px] text-gray-500">
                             {channel === "email" && <>Write <code>{"{{name}}"}</code> to insert each person&apos;s name. Free Brevo plan: 300 emails/day.</>}
+                            {channel === "email" && roster?.channels?.senders?.length > 0 && (
+                                <span className="block mt-1">Sends alternate between <b>{roster.channels.senders.join(" and ")}</b>; replies go to <b>{roster.channels.replyTo}</b>.</span>
+                            )}
                             {channel === "sms" && <>Same text to everyone · keep it under 160 characters for 1 SMS ({msg.message.length}/160). Fast2SMS charges per SMS.</>}
                             {channel === "whatsapp" && <>Sent with your approved template as &quot;Hi &lt;name&gt;, &lt;your message&gt;&quot;. Meta charges per message.</>}
                         </p>
