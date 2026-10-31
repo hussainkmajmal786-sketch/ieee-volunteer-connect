@@ -1,4 +1,4 @@
-// Grade Tiers & Badge System for IEEE Volunteer Connect
+// Grade Tiers & Badge System for Volunteer Connect
 
 export const GRADE_TIERS = [
     { name: 'Bronze', icon: '🟤', color: 'amber', bgClass: 'from-amber-600 to-amber-800', textClass: 'text-amber-700 dark:text-amber-400', bgPill: 'bg-amber-100 dark:bg-amber-900/30', border: 'border-amber-400/50', min: 0, max: 99 },

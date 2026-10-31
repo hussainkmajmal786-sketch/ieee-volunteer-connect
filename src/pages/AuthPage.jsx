@@ -111,7 +111,7 @@ export default function AuthPage() {
         <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4 relative overflow-hidden">
             <MetaTags 
                 title={isForgotPassword ? "Reset Password" : isLogin ? "Sign In" : "Join IEEE Connect"} 
-                description="Securely sign in or create your IEEE Volunteer Connect account to start participating in events and earning rewards."
+                description="Securely sign in or create your Volunteer Connect account to start participating in events and earning rewards."
             />
             {/* Background */}
             <div className="absolute inset-0 bg-gradient-to-br from-ieee-blue/5 via-white to-cyan-50/30 dark:from-ieee-dark dark:via-gray-900 dark:to-gray-950 -z-10" />

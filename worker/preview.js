@@ -12,7 +12,7 @@ import { formatEventDate } from '../src/utils/format.js';
 import { feeLabel } from '../src/utils/events.js';
 
 const SITE_NAME = 'IEEE SB CEK';
-const DEFAULT_TITLE = 'IEEE Volunteer Connect | CEK';
+const DEFAULT_TITLE = 'Volunteer Connect | CEK';
 const DEFAULT_DESC = 'Official platform of the IEEE Student Branch, College of Engineering Kidangoor — discover events, register in one tap, volunteer and earn rewards.';
 
 /** Main pages and their preview text. */

@@ -109,7 +109,7 @@ export default function ProfilePage() {
 
     return (
         <div className="max-w-3xl mx-auto px-4 py-10">
-            <MetaTags title="My Profile" description="Edit your IEEE Volunteer Connect profile." />
+            <MetaTags title="My Profile" description="Edit your Volunteer Connect profile." />
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <h1 className="text-2xl font-black text-gray-900 dark:text-white">My Profile</h1>
                 {isTeam && (

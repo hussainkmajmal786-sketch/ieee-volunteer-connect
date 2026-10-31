@@ -1,5 +1,5 @@
 /**
- * IEEE Volunteer Connect — Application Constants
+ * Volunteer Connect — Application Constants
  */
 
 // ─── SUPER ADMIN ────────────────────────────────────────────

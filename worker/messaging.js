@@ -206,7 +206,7 @@ export async function testEmail(env, ctx, to) {
     try {
         await sendViaBrevo(env, {
             to: [{ email: address }],
-            subject: 'Test email from IEEE Volunteer Connect',
+            subject: 'Test email from Volunteer Connect',
             htmlContent: '<p>If you can read this, email sending works. 🎉</p>',
         });
         return { ok: true, to: address, sender };

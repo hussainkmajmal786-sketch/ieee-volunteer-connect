@@ -36,7 +36,7 @@ export default function ResetPasswordPage() {
     const invalid = !token || linkError;
     return (
         <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
-            <MetaTags title="Reset Password" description="Choose a new password for your IEEE Volunteer Connect account." />
+            <MetaTags title="Reset Password" description="Choose a new password for your Volunteer Connect account." />
             <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 p-8">
                 <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Choose a new password</h1>
                 {invalid ? (

@@ -298,7 +298,7 @@ export default function EventDetailPage() {
         <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
             <MetaTags 
                 title={event.name} 
-                description={event.desc || `Join us for ${event.name} at ${event.venue} on ${formatEventDate(event.date)}. Register now on IEEE Volunteer Connect.`}
+                description={event.desc || `Join us for ${event.name} at ${event.venue} on ${formatEventDate(event.date)}. Register now on Volunteer Connect.`}
                 image={event.imageUrl}
             />
             {/* Back link */}

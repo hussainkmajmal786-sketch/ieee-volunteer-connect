@@ -50,7 +50,7 @@ export default function InstallPWAButton({ className = "" }) {
             type="button"
             onClick={install}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-ieee-blue/10 dark:bg-cyan-900/30 text-ieee-blue dark:text-cyan-400 hover:bg-ieee-blue/15 dark:hover:bg-cyan-900/40 transition-colors ${className}`}
-            aria-label="Install IEEE Volunteer Connect as an app"
+            aria-label="Install Volunteer Connect as an app"
         >
             <Download size={13} /> Install App
         </button>

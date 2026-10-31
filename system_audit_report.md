@@ -1,6 +1,6 @@
 # System Audit & Comprehensive Testing Report
 
-This report documents the testing and configuration audit for the **IEEE Volunteer Connect** platform across all requested domains.
+This report documents the testing and configuration audit for the **Volunteer Connect** platform across all requested domains.
 
 ## 1. APIs & Backend Logic
 - **Status**: ✅ **Healthy**

@@ -7,7 +7,7 @@ import { useToast } from "../../hooks/useToast";
 const BATCH = 50;
 
 function appsScript(url, key) {
-    return `// IEEE Volunteer Connect: sends every response of this form to the
+    return `// Volunteer Connect: sends every response of this form to the
 // ambassador tracker, so registrations count for the right ambassador.
 const HOOK_URL = '${url}';
 const HOOK_KEY = '${key}';
