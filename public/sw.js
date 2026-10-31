@@ -1,5 +1,5 @@
 /**
- * IEEE Volunteer Connect — Service Worker
+ * Volunteer Connect — Service Worker
  * -------------------------------------------------
  * Strategy:
  *  - Precache the app shell and offline fallback

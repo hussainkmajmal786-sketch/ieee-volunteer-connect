@@ -9,7 +9,7 @@ const MetaTags = ({
     title, 
     description, 
     image = "/og-image.png",
-    name = "IEEE Volunteer Connect | CEK",
+    name = "Volunteer Connect | CEK",
     type = "website"
 }) => {
     const fullTitle = title ? `${title} | ${name}` : name;

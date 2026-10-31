@@ -25,7 +25,7 @@ export async function sendEmail(env, to, subject, html) {
     const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: env.EMAIL_FROM || 'IEEE Volunteer Connect <onboarding@resend.dev>', to, subject, html }),
+        body: JSON.stringify({ from: env.EMAIL_FROM || 'Volunteer Connect <onboarding@resend.dev>', to, subject, html }),
     });
     if (!res.ok) throw new Error(`Email send failed: ${res.status}`);
 }
@@ -71,7 +71,7 @@ export function createAuth(env) {
                 },
             },
             sendResetPassword: async ({ user, url }) => {
-                await sendEmail(env, user.email, 'Reset your IEEE Volunteer Connect password',
+                await sendEmail(env, user.email, 'Reset your Volunteer Connect password',
                     `<p>Hi ${user.name || ''},</p><p><a href="${url}">Click here to reset your password</a>. The link expires in 1 hour.</p>`);
             },
         },

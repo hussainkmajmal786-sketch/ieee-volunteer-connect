@@ -149,8 +149,8 @@ export default function Footer() {
 
             {/* Big shaded wordmark behind the bottom of the footer */}
             <div aria-hidden="true" className="pointer-events-none select-none absolute inset-x-0 bottom-0 flex justify-center overflow-hidden">
-                <span className="block whitespace-nowrap font-black uppercase leading-[0.8] tracking-tighter text-[6.4vw] translate-y-[22%] bg-gradient-to-b from-ieee-blue/15 via-ieee-blue/[0.07] to-transparent dark:from-cyan-400/15 dark:via-cyan-400/[0.06] bg-clip-text text-transparent">
-                    IEEE Volunteer Connect
+                <span className="block whitespace-nowrap font-black uppercase leading-[0.8] tracking-tighter text-[8.4vw] translate-y-[22%] bg-gradient-to-b from-ieee-blue/15 via-ieee-blue/[0.07] to-transparent dark:from-cyan-400/15 dark:via-cyan-400/[0.06] bg-clip-text text-transparent">
+                    Volunteer Connect
                 </span>
             </div>
         </footer>

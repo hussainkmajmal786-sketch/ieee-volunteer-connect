@@ -1,6 +1,6 @@
 {
-    "name": "IEEE Volunteer Connect | CEK",
-    "short_name": "IEEE VC",
+    "name": "Volunteer Connect | CEK",
+    "short_name": "Volunteer Connect",
     "description": "Official Volunteer Connect platform of IEEE Student Branch CEK — events, leaderboard, and rewards.",
     "start_url": "/",
     "scope": "/",

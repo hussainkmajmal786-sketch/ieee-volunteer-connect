@@ -1,4 +1,4 @@
-# IEEE Volunteer Connect
+# Volunteer Connect
 
 A volunteer management platform for IEEE student branches — events, tasks, points, leaderboards, and admin tooling in one place.
 

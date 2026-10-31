@@ -1,4 +1,4 @@
-// IEEE Volunteer Connect — Cloudflare Worker
+// Volunteer Connect — Cloudflare Worker
 // Serves the React build (static assets) plus the /api backend:
 //   /api/auth/*   Better Auth (email/password + Google)
 //   /api/db/*     Firestore-style document access, guarded by worker/rules.js

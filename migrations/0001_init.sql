@@ -1,4 +1,4 @@
--- IEEE Volunteer Connect — Cloudflare D1 schema
+-- Volunteer Connect — Cloudflare D1 schema
 -- Apply with: npx wrangler d1 migrations apply DB --remote
 
 -- ─── Better Auth ─────────────────────────────────────────────
